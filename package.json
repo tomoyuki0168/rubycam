@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
-    "playwright": "^1.49.1"
+    "playwright": "^1.49.1",
+    "qrcode-generator": "^2.0.4"
   }
 }

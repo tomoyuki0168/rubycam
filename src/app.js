@@ -2,6 +2,7 @@
 import { LANGUAGES, getLanguage, detectLanguage, tokenize } from './lang/index.js';
 import { recognize } from './ocr.js';
 import { enhance } from './enhance.js';
+import { makeQrSvg } from './qr.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -18,6 +19,7 @@ const el = {
   speak: $('btn-speak'), copy: $('btn-copy'),
   sharePanel: $('share-panel'), shareUrl: $('share-url'), shareActions: $('share-actions'),
   share: $('btn-share'), line: $('btn-line'), copyUrl: $('btn-copy-url'), shareNote: $('share-note'),
+  qr: $('qr'), qrCode: $('qr-code'), installHint: $('install-hint'),
 };
 
 const MAX_EDGE = 1600;
@@ -453,6 +455,14 @@ function setUpShare() {
   }
 
   el.shareUrl.textContent = url;
+
+  // 目の前の相手にはリンクを送るより、画面を向けたほうが速い
+  try {
+    el.qrCode.replaceChildren(makeQrSvg(url));
+    el.qr.hidden = false;
+  } catch {
+    el.qr.hidden = true;
+  }
   el.line.href = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(SHARE_TITLE)}`;
   el.share.hidden = !navigator.share;
   el.shareNote.textContent = navigator.share
@@ -477,7 +487,44 @@ function setUpShare() {
   });
 }
 
+/** 受け取った人が最初に開いたとき、ホーム画面への追加を一度だけすすめる */
+function suggestInstall() {
+  const HIDE_KEY = 'rubycam.installHintDismissed';
+  const standalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  let dismissed = false;
+  try {
+    dismissed = localStorage.getItem(HIDE_KEY) === '1';
+  } catch {
+    /* 保存できない環境ではその都度出す */
+  }
+  if (!shareableUrl() || standalone || dismissed) return;
+
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const text = document.createElement('span');
+  text.textContent = ios
+    ? '下の共有ボタン（□に↑）から「ホーム画面に追加」を選ぶと、アプリのように1タップで開けます。'
+    : 'ブラウザのメニューから「ホーム画面に追加」を選ぶと、アプリのように1タップで開けます。';
+
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'btn small ghost';
+  close.textContent = '閉じる';
+  close.addEventListener('click', () => {
+    el.installHint.hidden = true;
+    try {
+      localStorage.setItem(HIDE_KEY, '1');
+    } catch {
+      /* 保存できなくても閉じられれば十分 */
+    }
+  });
+
+  el.installHint.replaceChildren(text, close);
+  el.installHint.hidden = false;
+}
+
 setUpShare();
+suggestInstall();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.__RUBYCAM_SINGLE_FILE__) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -31,6 +31,8 @@
 </header>
 
 <main>
+  <p class="hint install-hint" id="install-hint" hidden></p>
+
   <section class="panel" id="capture-panel">
     <div class="stage" id="stage">
       <video id="preview" playsinline muted autoplay></video>
@@ -96,13 +98,21 @@
     <div class="panel-head">
       <h2>このアプリを共有する</h2>
     </div>
-    <p class="share-url" id="share-url"></p>
-    <div class="controls" id="share-actions">
-      <button type="button" id="btn-share" class="btn primary">共有する</button>
-      <a id="btn-line" class="btn line" target="_blank" rel="noopener">LINEで送る</a>
-      <button type="button" id="btn-copy-url" class="btn ghost">リンクをコピー</button>
+    <div class="share-body">
+      <div class="share-main">
+        <p class="share-url" id="share-url"></p>
+        <div class="controls" id="share-actions">
+          <button type="button" id="btn-share" class="btn primary">共有する</button>
+          <a id="btn-line" class="btn line" target="_blank" rel="noopener">LINEで送る</a>
+          <button type="button" id="btn-copy-url" class="btn ghost">リンクをコピー</button>
+        </div>
+        <p class="note" id="share-note"></p>
+      </div>
+      <figure class="qr" id="qr" hidden>
+        <div id="qr-code"></div>
+        <figcaption>目の前の相手には、これを読み取ってもらうのが早いです</figcaption>
+      </figure>
     </div>
-    <p class="note" id="share-note"></p>
   </section>
 
   <section class="panel about">

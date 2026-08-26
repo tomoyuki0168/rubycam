@@ -144,6 +144,15 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 
 .note { color: var(--muted); font-size: 0.78rem; margin: 0.8rem 0 0; }
 
+.share-body { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.share-main { flex: 1 1 16rem; min-width: 0; }
+.qr { margin: 0.75rem 0 0; width: 8.5rem; text-align: center; }
+.qr svg { width: 100%; height: auto; border-radius: 8px; display: block; }
+.qr figcaption { margin-top: 0.4rem; font-size: 0.68rem; color: var(--muted); line-height: 1.4; }
+
+.install-hint { margin: 0 0 0.25rem; display: flex; gap: 0.6rem; align-items: center; }
+.install-hint span { flex: 1; }
+
 .btn.line { background: #06c755; border-color: #06c755; color: #04220f; font-weight: 700; text-decoration: none; }
 .btn.line:hover { border-color: #06c755; filter: brightness(1.08); }
 .share-url {
