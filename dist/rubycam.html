@@ -4471,6 +4471,21 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   var MAX_EDGE = 1600;
   var STORE_KEY = "rubycam.lang";
   var DIALECT_KEY = "rubycam.dialect";
+  var store = {
+    get(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    set(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+      }
+    }
+  };
   var stream = null;
   var canvas = null;
   var lastResult = null;
@@ -4481,17 +4496,17 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     o.textContent = l.label;
     el.lang.append(o);
   });
-  el.lang.value = localStorage.getItem(STORE_KEY) ?? "en";
+  el.lang.value = store.get(STORE_KEY) ?? "en";
   syncStyleOptions();
   el.lang.addEventListener("change", () => {
-    localStorage.setItem(STORE_KEY, el.lang.value);
+    store.set(STORE_KEY, el.lang.value);
     syncStyleOptions();
     if (lastResult) render2();
   });
   el.style.addEventListener("change", () => lastResult && render2());
   el.toggleOverlay.addEventListener("change", () => lastResult && render2());
   el.dialect.addEventListener("change", () => {
-    localStorage.setItem(DIALECT_KEY, el.dialect.value);
+    store.set(DIALECT_KEY, el.dialect.value);
     if (lastResult) render2();
   });
   el.camera.addEventListener("click", startCamera);
@@ -4514,7 +4529,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     if (lang.code === "zh") el.style.value = el.style.value === "kana" ? "kana" : "roman";
     el.dialectField.hidden = !lang.dialects;
     if (lang.dialects) {
-      const saved = localStorage.getItem(DIALECT_KEY);
+      const saved = store.get(DIALECT_KEY);
       el.dialect.replaceChildren(
         ...lang.dialects.map((d) => {
           const o = document.createElement("option");
@@ -4756,7 +4771,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     btn.textContent = `${lang.label}で読み直す`;
     btn.addEventListener("click", () => {
       el.lang.value = guess;
-      localStorage.setItem(STORE_KEY, guess);
+      store.set(STORE_KEY, guess);
       syncStyleOptions();
       el.hint.hidden = true;
       run();
@@ -4820,7 +4835,8 @@ ${reads}`;
     if (!url) {
       el.shareUrl.hidden = true;
       el.shareActions.hidden = true;
-      el.shareNote.textContent = "このファイルは保存して開いているため、リンクとしては送れません。相手にも使ってもらうには、公開したURLから開いてください。";
+      el.sharePanel.querySelector("h2").textContent = "この形で受け取った方へ";
+      el.shareNote.textContent = "このファイル1つでアプリ全体です。紙を読み取るときは「カメラで撮る」を使ってください（画面内カメラはファイルからは使えません）。初回だけ文字認識の辞書をネットから取得するため、通信できる状態で一度お使いください。二回目以降は同じ端末に残ります。ほかの人に渡すときは、このファイルをそのまま送れば同じように使えます。";
       return;
     }
     el.shareUrl.textContent = url;
@@ -4851,12 +4867,7 @@ ${reads}`;
   function suggestInstall() {
     const HIDE_KEY = "rubycam.installHintDismissed";
     const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-    let dismissed = false;
-    try {
-      dismissed = localStorage.getItem(HIDE_KEY) === "1";
-    } catch {
-    }
-    if (!shareableUrl() || standalone || dismissed) return;
+    if (!shareableUrl() || standalone || store.get(HIDE_KEY) === "1") return;
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const text = document.createElement("span");
     text.textContent = ios ? "下の共有ボタン（□に↑）から「ホーム画面に追加」を選ぶと、アプリのように1タップで開けます。" : "ブラウザのメニューから「ホーム画面に追加」を選ぶと、アプリのように1タップで開けます。";
@@ -4866,10 +4877,7 @@ ${reads}`;
     close.textContent = "閉じる";
     close.addEventListener("click", () => {
       el.installHint.hidden = true;
-      try {
-        localStorage.setItem(HIDE_KEY, "1");
-      } catch {
-      }
+      store.set(HIDE_KEY, "1");
     });
     el.installHint.replaceChildren(text, close);
     el.installHint.hidden = false;

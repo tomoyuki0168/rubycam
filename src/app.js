@@ -26,6 +26,30 @@ const MAX_EDGE = 1600;
 const STORE_KEY = 'rubycam.lang';
 const DIALECT_KEY = 'rubycam.dialect';
 
+/**
+ * 設定の保存先
+ *
+ * ファイルとして開いた場合（file://）、ブラウザによっては localStorage への
+ * アクセス自体が例外になる。ここで失敗しても本体は動かなければならないので、
+ * 読み書きを包んで握りつぶす。
+ */
+const store = {
+  get(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* 保存できなくても、そのセッションでは使える */
+    }
+  },
+};
+
 let stream = null;
 let canvas = null;
 let lastResult = null;
@@ -39,18 +63,18 @@ LANGUAGES.forEach((l) => {
   o.textContent = l.label;
   el.lang.append(o);
 });
-el.lang.value = localStorage.getItem(STORE_KEY) ?? 'en';
+el.lang.value = store.get(STORE_KEY) ?? 'en';
 syncStyleOptions();
 
 el.lang.addEventListener('change', () => {
-  localStorage.setItem(STORE_KEY, el.lang.value);
+  store.set(STORE_KEY, el.lang.value);
   syncStyleOptions();
   if (lastResult) render();
 });
 el.style.addEventListener('change', () => lastResult && render());
 el.toggleOverlay.addEventListener('change', () => lastResult && render());
 el.dialect.addEventListener('change', () => {
-  localStorage.setItem(DIALECT_KEY, el.dialect.value);
+  store.set(DIALECT_KEY, el.dialect.value);
   if (lastResult) render();
 });
 
@@ -81,7 +105,7 @@ function syncStyleOptions() {
   // 発音が地域で大きく分かれる言語だけ、選べるようにする
   el.dialectField.hidden = !lang.dialects;
   if (lang.dialects) {
-    const saved = localStorage.getItem(DIALECT_KEY);
+    const saved = store.get(DIALECT_KEY);
     el.dialect.replaceChildren(
       ...lang.dialects.map((d) => {
         const o = document.createElement('option');
@@ -360,7 +384,7 @@ function suggestLanguage(text) {
   btn.textContent = `${lang.label}で読み直す`;
   btn.addEventListener('click', () => {
     el.lang.value = guess;
-    localStorage.setItem(STORE_KEY, guess);
+    store.set(STORE_KEY, guess);
     syncStyleOptions();
     el.hint.hidden = true;
     run();
@@ -448,9 +472,13 @@ function setUpShare() {
   if (!url) {
     el.shareUrl.hidden = true;
     el.shareActions.hidden = true;
+    el.sharePanel.querySelector('h2').textContent = 'この形で受け取った方へ';
     el.shareNote.textContent =
-      'このファイルは保存して開いているため、リンクとしては送れません。'
-      + '相手にも使ってもらうには、公開したURLから開いてください。';
+      'このファイル1つでアプリ全体です。'
+      + '紙を読み取るときは「カメラで撮る」を使ってください（画面内カメラはファイルからは使えません）。'
+      + '初回だけ文字認識の辞書をネットから取得するため、通信できる状態で一度お使いください。'
+      + '二回目以降は同じ端末に残ります。'
+      + 'ほかの人に渡すときは、このファイルをそのまま送れば同じように使えます。';
     return;
   }
 
@@ -492,13 +520,7 @@ function suggestInstall() {
   const HIDE_KEY = 'rubycam.installHintDismissed';
   const standalone = window.matchMedia('(display-mode: standalone)').matches
     || window.navigator.standalone === true;
-  let dismissed = false;
-  try {
-    dismissed = localStorage.getItem(HIDE_KEY) === '1';
-  } catch {
-    /* 保存できない環境ではその都度出す */
-  }
-  if (!shareableUrl() || standalone || dismissed) return;
+  if (!shareableUrl() || standalone || store.get(HIDE_KEY) === '1') return;
 
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const text = document.createElement('span');
@@ -512,11 +534,7 @@ function suggestInstall() {
   close.textContent = '閉じる';
   close.addEventListener('click', () => {
     el.installHint.hidden = true;
-    try {
-      localStorage.setItem(HIDE_KEY, '1');
-    } catch {
-      /* 保存できなくても閉じられれば十分 */
-    }
+    store.set(HIDE_KEY, '1');
   });
 
   el.installHint.replaceChildren(text, close);
