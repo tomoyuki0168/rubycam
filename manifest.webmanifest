@@ -1,0 +1,13 @@
+{
+  "name": "ルビカメラ",
+  "short_name": "ルビカメラ",
+  "description": "外国語の紙をカメラで撮ると、発音のふりがなを付けて返します。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#101418",
+  "theme_color": "#101418",
+  "lang": "ja",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

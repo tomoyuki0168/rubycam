@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<title>ルビカメラ — 外国語の紙に発音ルビをふる</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<header class="bar">
+  <h1>ルビカメラ</h1>
+  <p class="tagline">外国語の紙を撮ると、読み方をふりがなで返します</p>
+</header>
+
+<main>
+  <section class="panel" id="capture-panel">
+    <div class="stage" id="stage">
+      <video id="preview" playsinline muted autoplay></video>
+      <img id="shot" alt="撮影した写真">
+      <div class="stage-empty" id="stage-empty">
+        <p>カメラを起動するか、写真を選んでください</p>
+      </div>
+      <div class="overlay" id="overlay" aria-hidden="true"></div>
+    </div>
+
+    <div class="controls">
+      <button type="button" id="btn-camera" class="btn">カメラを起動</button>
+      <button type="button" id="btn-shutter" class="btn primary" disabled>撮影してルビをふる</button>
+      <label class="btn ghost" for="file">写真を選ぶ
+        <input type="file" id="file" accept="image/*" capture="environment" hidden>
+      </label>
+      <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
+    </div>
+
+    <div class="settings">
+      <label>言語
+        <select id="lang"></select>
+      </label>
+      <label>ルビ
+        <select id="style">
+          <option value="kana">カタカナ</option>
+          <option value="roman">現地の読み（ローマ字・ピンイン）</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="toggle-overlay" checked> 写真にルビを重ねる</label>
+    </div>
+
+    <p class="status" id="status" role="status">写真を用意すると、ここに進み具合が出ます。</p>
+    <div class="progress" id="progress" hidden><span id="progress-bar"></span></div>
+    <p class="hint" id="hint" hidden></p>
+  </section>
+
+  <section class="panel" id="text-panel" hidden>
+    <div class="panel-head">
+      <h2>読み取った文章</h2>
+      <div class="panel-actions">
+        <button type="button" id="btn-speak" class="btn small">全文を読み上げる</button>
+        <button type="button" id="btn-copy" class="btn small ghost">読みをコピー</button>
+      </div>
+    </div>
+    <div id="text-view" class="text-view"></div>
+    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。</p>
+  </section>
+
+  <section class="panel about">
+    <h2>使い方</h2>
+    <ol>
+      <li>読みたい紙の言語を選ぶ（ラテン文字なら撮影後に自動で見分けて教えます）</li>
+      <li>カメラを起動して撮影、または撮影済みの写真を選ぶ</li>
+      <li>写真の上か、下の文章表示でふりがなを読む</li>
+    </ol>
+    <p class="note">文字認識と中国語のピンイン変換は、初回だけネットから辞書を取得します（以降は端末に残ります）。読みの生成そのものは端末内で完結し、写真がどこかに送られることはありません。</p>
+  </section>
+</main>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

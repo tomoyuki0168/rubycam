@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#101418"/>
+  <rect x="72" y="150" width="368" height="252" rx="34" fill="#1f2833" stroke="#4da3ff" stroke-width="14"/>
+  <circle cx="256" cy="286" r="76" fill="#101418" stroke="#4da3ff" stroke-width="14"/>
+  <text x="256" y="312" font-family="sans-serif" font-size="72" font-weight="700" fill="#ffd479" text-anchor="middle">A</text>
+  <text x="256" y="128" font-family="sans-serif" font-size="62" font-weight="700" fill="#ffd479" text-anchor="middle">ルビ</text>
+</svg>

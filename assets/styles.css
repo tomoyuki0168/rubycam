@@ -1,0 +1,137 @@
+:root {
+  --bg: #101418;
+  --panel: #171d23;
+  --line: #2a333c;
+  --fg: #e8eef4;
+  --muted: #93a3b1;
+  --accent: #4da3ff;
+  --accent-ink: #05121f;
+  --ruby: #ffd479;
+  --ruby-weak: #b8925a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  line-height: 1.6;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bar {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.bar h1 { margin: 0; font-size: 1.15rem; letter-spacing: 0.04em; }
+.tagline { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.8rem; }
+
+main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.stage {
+  position: relative;
+  container-type: inline-size;
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;
+}
+/* ルビの位置は写真の枠を基準に決めるので、写真は余白なく枠いっぱいに置く */
+.stage video, .stage img { display: none; width: 100%; height: auto; vertical-align: top; }
+.stage.live video { display: block; }
+.stage.shot img { display: block; }
+.stage.live .stage-empty, .stage.shot .stage-empty { display: none; }
+.stage-empty { color: var(--muted); font-size: 0.85rem; padding: 3.5rem 1rem; text-align: center; }
+
+.overlay { position: absolute; inset: 0; pointer-events: none; }
+.overlay .w {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  border-bottom: 2px solid rgba(77, 163, 255, 0.5);
+}
+.overlay .w b {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  padding: 0 0.15em;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--ruby);
+  text-shadow: 0 1px 2px #000, 0 0 6px #000;
+  line-height: 1.1;
+}
+/* 写真の上端に近い行は、ルビが枠外に出てしまうので下に回す */
+.overlay .w.below b { bottom: auto; top: 100%; }
+.overlay .w.weak b { color: var(--ruby-weak); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #1f2833;
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 0.65rem 0.95rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.ghost { background: transparent; }
+.btn.small { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+
+.settings { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; margin-top: 0.85rem; align-items: center; }
+.settings label { font-size: 0.8rem; color: var(--muted); display: grid; gap: 0.25rem; }
+.settings label.check { display: flex; align-items: center; gap: 0.4rem; }
+.settings select {
+  font: inherit;
+  font-size: 0.85rem;
+  background: #1f2833;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+}
+
+.status { margin: 0.85rem 0 0; font-size: 0.82rem; color: var(--muted); }
+.hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  background: #1d2a38;
+  border: 1px solid #2f4a66;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+.hint button { margin-left: 0.5rem; }
+
+.progress { height: 4px; background: #222c36; border-radius: 3px; overflow: hidden; margin-top: 0.6rem; }
+.progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.panel-head h2 { margin: 0; font-size: 0.95rem; }
+.panel-actions { display: flex; gap: 0.4rem; }
+
+.text-view { margin-top: 0.9rem; font-size: 1.15rem; }
+.text-view p { margin: 0 0 0.9rem; }
+.text-view ruby { cursor: pointer; }
+.text-view rt { font-size: 0.5em; color: var(--ruby); font-weight: 600; }
+.text-view ruby.weak rt { color: var(--ruby-weak); }
+.text-view ruby:hover { background: #223447; border-radius: 4px; }
+
+.note { color: var(--muted); font-size: 0.78rem; margin: 0.8rem 0 0; }
+.about h2 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.about ol { margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: var(--muted); }

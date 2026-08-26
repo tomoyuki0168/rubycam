@@ -1,0 +1,326 @@
+/** 画面まわり — 撮影、文字認識、ルビの生成と表示 */
+import { LANGUAGES, getLanguage, detectLanguage, tokenize } from './lang/index.js';
+import { recognize } from './ocr.js';
+
+const $ = (id) => document.getElementById(id);
+const el = {
+  stage: $('stage'), preview: $('preview'), shot: $('shot'), overlay: $('overlay'),
+  camera: $('btn-camera'), shutter: $('btn-shutter'), retake: $('btn-retake'), file: $('file'),
+  lang: $('lang'), style: $('style'), toggleOverlay: $('toggle-overlay'),
+  status: $('status'), progress: $('progress'), bar: $('progress-bar'), hint: $('hint'),
+  textPanel: $('text-panel'), textView: $('text-view'),
+  speak: $('btn-speak'), copy: $('btn-copy'),
+};
+
+const MAX_EDGE = 1600;
+const STORE_KEY = 'rubycam.lang';
+
+let stream = null;
+let canvas = null;
+let lastResult = null;
+let busy = false;
+
+/* ---------------- 初期化 ---------------- */
+
+LANGUAGES.forEach((l) => {
+  const o = document.createElement('option');
+  o.value = l.code;
+  o.textContent = l.label;
+  el.lang.append(o);
+});
+el.lang.value = localStorage.getItem(STORE_KEY) ?? 'en';
+syncStyleOptions();
+
+el.lang.addEventListener('change', () => {
+  localStorage.setItem(STORE_KEY, el.lang.value);
+  syncStyleOptions();
+  if (lastResult) render();
+});
+el.style.addEventListener('change', () => lastResult && render());
+el.toggleOverlay.addEventListener('change', () => lastResult && render());
+
+el.camera.addEventListener('click', startCamera);
+el.shutter.addEventListener('click', shoot);
+el.retake.addEventListener('click', reset);
+el.file.addEventListener('change', onFile);
+el.speak.addEventListener('click', speakAll);
+el.copy.addEventListener('click', copyReadings);
+
+/** 現地表記のルビを持たない言語では選択肢を出さない */
+function syncStyleOptions() {
+  const lang = getLanguage(el.lang.value);
+  const supportsRoman = ['ko', 'ru', 'el', 'zh'].includes(lang.code);
+  el.style.disabled = !supportsRoman;
+  if (!supportsRoman) el.style.value = 'kana';
+  if (lang.code === 'zh') el.style.value = el.style.value === 'kana' ? 'kana' : 'roman';
+}
+
+/* ---------------- 撮影 ---------------- */
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } },
+      audio: false,
+    });
+    el.preview.srcObject = stream;
+    await el.preview.play();
+    el.stage.classList.add('live');
+    el.stage.classList.remove('shot');
+    el.shutter.disabled = false;
+    setStatus('紙が画面いっぱいに入るように構えて、撮影してください。');
+  } catch (e) {
+    setStatus(`カメラを起動できませんでした（${e.name}）。「写真を選ぶ」からでも使えます。`);
+  }
+}
+
+function stopCamera() {
+  stream?.getTracks().forEach((t) => t.stop());
+  stream = null;
+  el.stage.classList.remove('live');
+}
+
+function shoot() {
+  if (!stream) return;
+  const v = el.preview;
+  setImage(v, v.videoWidth, v.videoHeight);
+  stopCamera();
+  run();
+}
+
+function onFile(ev) {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    setImage(img, img.naturalWidth, img.naturalHeight);
+    stopCamera();
+    URL.revokeObjectURL(img.src);
+    run();
+  };
+  img.onerror = () => setStatus('この画像は読み込めませんでした。');
+  img.src = URL.createObjectURL(file);
+  ev.target.value = '';
+}
+
+/** 長辺を抑えた canvas に描き直す（認識を速くするため） */
+function setImage(source, width, height) {
+  const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
+  canvas = document.createElement('canvas');
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+  el.shot.src = canvas.toDataURL('image/jpeg', 0.92);
+  el.stage.classList.add('shot');
+  el.retake.hidden = false;
+  el.shutter.disabled = true;
+}
+
+function reset() {
+  lastResult = null;
+  canvas = null;
+  el.overlay.replaceChildren();
+  el.stage.classList.remove('shot');
+  el.textPanel.hidden = true;
+  el.retake.hidden = true;
+  el.hint.hidden = true;
+  setStatus('写真を用意すると、ここに進み具合が出ます。');
+}
+
+/* ---------------- 認識とルビ付け ---------------- */
+
+async function run() {
+  if (busy || !canvas) return;
+  busy = true;
+  el.hint.hidden = true;
+  const lang = getLanguage(el.lang.value);
+  try {
+    setProgress(0.02);
+    setStatus(`${lang.label}として読み取っています…`);
+    await lang.prepare?.();
+    if (lang.isReady && !lang.isReady()) {
+      setStatus('中国語の読み仮名辞書を取得できませんでした。通信できる環境で開き直してください。');
+    }
+
+    const result = await recognize(canvas, lang.ocr, (m) => {
+      if (m.status === 'recognizing text') setProgress(0.3 + m.progress * 0.7);
+      else if (typeof m.progress === 'number') setProgress(m.progress * 0.3);
+    });
+    setProgress(1);
+
+    if (!result.text.trim()) {
+      setStatus('文字を見つけられませんでした。明るい場所で、紙を正面から撮り直してみてください。');
+      el.textPanel.hidden = true;
+      return;
+    }
+
+    lastResult = result;
+    render();
+    suggestLanguage(result.text);
+    setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）。`);
+  } catch (e) {
+    setStatus(e.message ?? '読み取りに失敗しました。');
+  } finally {
+    busy = false;
+    setTimeout(() => setProgress(null), 600);
+  }
+}
+
+/** 語からルビを1つ作る */
+function readingOf(lang, word) {
+  const core = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
+  if (!core) return null;
+  const r = lang.read(core, { style: el.style.value });
+  const text = el.style.value === 'roman' && r.roman ? r.roman : r.ruby ?? r.kana;
+  if (!text) return null;
+  return { text, weak: r.confident === false, source: core };
+}
+
+function render() {
+  const lang = getLanguage(el.lang.value);
+  renderOverlay(lang);
+  renderText(lang);
+}
+
+function renderOverlay(lang) {
+  el.overlay.replaceChildren();
+  if (!el.toggleOverlay.checked || !lastResult || !canvas) return;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  for (const w of lastResult.words) {
+    if (!w.bbox) continue;
+    const r = readingOf(lang, w.text);
+    if (!r) continue;
+    const { x0, y0, x1, y1 } = w.bbox;
+    const box = document.createElement('div');
+    const nearTop = y0 / H < 0.09;
+    box.className = `w${r.weak ? ' weak' : ''}${nearTop ? ' below' : ''}`;
+    box.style.left = `${(x0 / W) * 100}%`;
+    box.style.top = `${(y0 / H) * 100}%`;
+    box.style.width = `${((x1 - x0) / W) * 100}%`;
+    box.style.height = `${((y1 - y0) / H) * 100}%`;
+    const rt = document.createElement('b');
+    rt.textContent = r.text;
+    // 文字の高さに合わせる。cqw なので写真を縮めてもルビの比率は崩れない。
+    // 語の幅よりルビが長くなりすぎると隣とぶつかるので、幅でも頭を押さえる
+    const byHeight = ((y1 - y0) / W) * 100 * 0.62;
+    const byWidth = (((x1 - x0) / W) * 100 * 1.7) / Math.max(1, r.text.length * 0.62);
+    rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
+    box.append(rt);
+    box.title = w.text;
+    box.addEventListener('click', () => speak(w.text, lang));
+    el.overlay.append(box);
+  }
+}
+
+function renderText(lang) {
+  el.textView.replaceChildren();
+  if (!lastResult) return;
+  const lines = lastResult.lines.length
+    ? lastResult.lines.map((l) => l.text)
+    : lastResult.text.split('\n');
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const p = document.createElement('p');
+    for (const token of tokenize(line, lang.code)) {
+      if (!token.isWord) {
+        p.append(token.text);
+        continue;
+      }
+      const r = readingOf(lang, token.text);
+      if (!r) {
+        p.append(token.text);
+        continue;
+      }
+      const ruby = document.createElement('ruby');
+      if (r.weak) ruby.className = 'weak';
+      ruby.append(token.text);
+      const rt = document.createElement('rt');
+      rt.textContent = r.text;
+      ruby.append(rt);
+      ruby.addEventListener('click', () => speak(token.text, lang));
+      p.append(ruby);
+    }
+    el.textView.append(p);
+  }
+  el.textPanel.hidden = el.textView.childElementCount === 0;
+}
+
+/** 選んだ言語と中身が食い違うときだけ、切り替えを提案する */
+function suggestLanguage(text) {
+  const guess = detectLanguage(text);
+  if (guess === el.lang.value) return;
+  const lang = getLanguage(guess);
+  el.hint.replaceChildren(`この文章は${lang.label}のようです。`);
+  const btn = document.createElement('button');
+  btn.className = 'btn small';
+  btn.textContent = `${lang.label}で読み直す`;
+  btn.addEventListener('click', () => {
+    el.lang.value = guess;
+    localStorage.setItem(STORE_KEY, guess);
+    syncStyleOptions();
+    el.hint.hidden = true;
+    run();
+  });
+  el.hint.append(btn);
+  el.hint.hidden = false;
+}
+
+/* ---------------- 読み上げ・コピー ---------------- */
+
+function speak(text, lang) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang.speech;
+  u.rate = 0.9;
+  speechSynthesis.speak(u);
+}
+
+function speakAll() {
+  if (!lastResult) return;
+  speak(lastResult.text.replace(/\s+/g, ' ').slice(0, 1000), getLanguage(el.lang.value));
+}
+
+async function copyReadings() {
+  if (!lastResult) return;
+  const lang = getLanguage(el.lang.value);
+  const out = (lastResult.lines.length ? lastResult.lines.map((l) => l.text) : lastResult.text.split('\n'))
+    .filter((l) => l.trim())
+    .map((line) => {
+      const reads = tokenize(line, lang.code)
+        .filter((t) => t.isWord)
+        .map((t) => readingOf(lang, t.text)?.text ?? t.text)
+        .join(lang.code === 'zh' ? '' : ' ');
+      return `${line}\n${reads}`;
+    })
+    .join('\n\n');
+  try {
+    await navigator.clipboard.writeText(out);
+    setStatus('読みをコピーしました。');
+  } catch {
+    setStatus('コピーできませんでした。文章を直接選択してコピーしてください。');
+  }
+}
+
+/* ---------------- 表示のこまごま ---------------- */
+
+function setStatus(msg) {
+  el.status.textContent = msg;
+}
+
+function setProgress(v) {
+  if (v === null) {
+    el.progress.hidden = true;
+    el.bar.style.width = '0%';
+    return;
+  }
+  el.progress.hidden = false;
+  el.bar.style.width = `${Math.round(v * 100)}%`;
+}
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
