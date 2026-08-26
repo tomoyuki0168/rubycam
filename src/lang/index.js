@@ -3,13 +3,14 @@ import en from './en.js';
 import zh from './zh.js';
 import ko from './ko.js';
 import vi from './vi.js';
+import my from './my.js';
 import ru from './ru.js';
 import el from './el.js';
 import de from './de.js';
 import fr from './fr.js';
 import { es, it, pt } from './romance.js';
 
-export const LANGUAGES = [en, zh, ko, vi, es, fr, de, it, pt, ru, el];
+export const LANGUAGES = [en, zh, ko, vi, my, es, fr, de, it, pt, ru, el];
 
 export const byCode = Object.fromEntries(LANGUAGES.map((l) => [l.code, l]));
 
@@ -19,6 +20,7 @@ export function getLanguage(code) {
 
 const SCRIPT_TEST = [
   ['ko', /[가-힣]/],
+  ['my', /[\u1000-\u109F]/],
   ['zh', /[一-鿿㐀-䶿]/],
   ['ru', /[Ѐ-ӿ]/],
   ['el', /[Ͱ-Ͽἀ-῿]/],

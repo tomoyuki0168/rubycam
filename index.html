@@ -66,8 +66,20 @@
       <label id="dialect-field" hidden>発音
         <select id="dialect"></select>
       </label>
+      <label>ルビの範囲
+        <select id="scope">
+          <option value="all">すべての語</option>
+          <option value="picked">選んだ語だけ</option>
+        </select>
+      </label>
       <label class="check"><input type="checkbox" id="toggle-overlay" checked> 写真にルビを重ねる</label>
       <label class="check"><input type="checkbox" id="toggle-enhance" checked> 文字を読みやすく補正する</label>
+    </div>
+
+    <div class="controls pick-tools" id="pick-tools" hidden>
+      <button type="button" id="btn-pick-all" class="btn small ghost">すべて選ぶ</button>
+      <button type="button" id="btn-pick-none" class="btn small ghost">選択を消す</button>
+      <span class="note" id="pick-count"></span>
     </div>
 
     <p class="status" id="status" role="status">写真を用意すると、ここに進み具合が出ます。</p>
@@ -85,7 +97,9 @@
     </div>
     <div id="text-view" class="text-view"></div>
     <p class="note" id="tone-legend" hidden></p>
-    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。
+    <p class="note">語をタップすると、その単語だけを読み上げます
+      （「選んだ語だけ」のときは、タップでルビの入切になります）。
+      うすい色のルビは辞書に無い語の推定読みです。
       点線の下線は、文字認識の綴りの誤りを補正した語です（タップすると元の綴りが出ます）。</p>
   </section>
 
@@ -116,6 +130,8 @@
       <li>読みたい紙の言語を選ぶ（ラテン文字なら撮影後に自動で見分けて教えます）</li>
       <li>「カメラで撮る」で紙を撮る（保存済みの写真を選んでも構いません）</li>
       <li>写真の上か、下の文章表示でふりがなを読む</li>
+      <li>一部だけ読みたいときは「ルビの範囲」を<b>選んだ語だけ</b>にして、
+        知りたい語を押す（写真の上はなぞって囲むこともできます）</li>
     </ol>
     <p class="note">文字認識と中国語のピンイン変換は、初回だけネットから辞書を取得します（以降は端末に残ります）。読みの生成そのものは端末内で完結し、写真がどこかに送られることはありません。</p>
   </section>

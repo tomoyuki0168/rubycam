@@ -118,6 +118,24 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 .overlay .w.below b { bottom: auto; top: 100%; }
 .overlay .w.weak b { color: var(--ruby-weak); }
 
+/* ルビをふる語を選ぶとき */
+.overlay.picking { pointer-events: auto; cursor: crosshair; }
+.overlay .w.off { border-bottom-color: rgba(147, 163, 177, 0.55); border-bottom-style: dashed; }
+.overlay .w.on { background: rgba(77, 163, 255, 0.18); }
+.sel-rect {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: rgba(77, 163, 255, 0.15);
+  pointer-events: none;
+}
+.pick-tools { align-items: center; margin-top: 0.6rem; }
+.pick-tools .note { margin: 0; }
+.text-view .word.pickable {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--muted);
+}
+.text-view .word.pickable:hover { background: #223447; border-radius: 4px; }
+
 .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
 
 .btn {
@@ -264,8 +282,20 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       <label id="dialect-field" hidden>発音
         <select id="dialect"></select>
       </label>
+      <label>ルビの範囲
+        <select id="scope">
+          <option value="all">すべての語</option>
+          <option value="picked">選んだ語だけ</option>
+        </select>
+      </label>
       <label class="check"><input type="checkbox" id="toggle-overlay" checked> 写真にルビを重ねる</label>
       <label class="check"><input type="checkbox" id="toggle-enhance" checked> 文字を読みやすく補正する</label>
+    </div>
+
+    <div class="controls pick-tools" id="pick-tools" hidden>
+      <button type="button" id="btn-pick-all" class="btn small ghost">すべて選ぶ</button>
+      <button type="button" id="btn-pick-none" class="btn small ghost">選択を消す</button>
+      <span class="note" id="pick-count"></span>
     </div>
 
     <p class="status" id="status" role="status">写真を用意すると、ここに進み具合が出ます。</p>
@@ -283,7 +313,9 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     </div>
     <div id="text-view" class="text-view"></div>
     <p class="note" id="tone-legend" hidden></p>
-    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。
+    <p class="note">語をタップすると、その単語だけを読み上げます
+      （「選んだ語だけ」のときは、タップでルビの入切になります）。
+      うすい色のルビは辞書に無い語の推定読みです。
       点線の下線は、文字認識の綴りの誤りを補正した語です（タップすると元の綴りが出ます）。</p>
   </section>
 
@@ -314,6 +346,8 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       <li>読みたい紙の言語を選ぶ（ラテン文字なら撮影後に自動で見分けて教えます）</li>
       <li>「カメラで撮る」で紙を撮る（保存済みの写真を選んでも構いません）</li>
       <li>写真の上か、下の文章表示でふりがなを読む</li>
+      <li>一部だけ読みたいときは「ルビの範囲」を<b>選んだ語だけ</b>にして、
+        知りたい語を押す（写真の上はなぞって囲むこともできます）</li>
     </ol>
     <p class="note">文字認識と中国語のピンイン変換は、初回だけネットから辞書を取得します（以降は端末に残ります）。読みの生成そのものは端末内で完結し、写真がどこかに送られることはありません。</p>
   </section>
@@ -2070,6 +2104,267 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     }
   };
 
+  // src/lang/my.js
+  var VIRAMA = "္";
+  var ASAT = "်";
+  var CREAKY = "့";
+  var HIGH = "း";
+  var ONSET2 = {
+    "က": "k",
+    "ခ": "k",
+    "ဂ": "g",
+    "ဃ": "g",
+    "င": "N",
+    "စ": "s",
+    "ဆ": "s",
+    "ဇ": "z",
+    "ဈ": "z",
+    "ဉ": "J",
+    "ည": "J",
+    "ဋ": "t",
+    "ဌ": "t",
+    "ဍ": "d",
+    "ဎ": "d",
+    "ဏ": "n",
+    "တ": "t",
+    "ထ": "t",
+    "ဒ": "d",
+    "ဓ": "d",
+    "န": "n",
+    "ပ": "p",
+    "ဖ": "p",
+    "ဗ": "b",
+    "ဘ": "b",
+    "မ": "m",
+    "ယ": "y",
+    "ရ": "y",
+    "လ": "l",
+    "ဝ": "w",
+    "သ": "T",
+    "ဟ": "h",
+    "ဠ": "l",
+    "အ": ""
+  };
+  var ROMAN_ONSET2 = {
+    "က": "k",
+    "ခ": "kh",
+    "ဂ": "g",
+    "ဃ": "gh",
+    "င": "ng",
+    "စ": "s",
+    "ဆ": "hs",
+    "ဇ": "z",
+    "ဈ": "zh",
+    "ဉ": "ny",
+    "ည": "ny",
+    "ဋ": "t",
+    "ဌ": "ht",
+    "ဍ": "d",
+    "ဎ": "dh",
+    "ဏ": "n",
+    "တ": "t",
+    "ထ": "ht",
+    "ဒ": "d",
+    "ဓ": "dh",
+    "န": "n",
+    "ပ": "p",
+    "ဖ": "hp",
+    "ဗ": "b",
+    "ဘ": "bh",
+    "မ": "m",
+    "ယ": "y",
+    "ရ": "y",
+    "လ": "l",
+    "ဝ": "w",
+    "သ": "th",
+    "ဟ": "h",
+    "ဠ": "l",
+    "အ": "a"
+  };
+  var MEDIALS = { "ျ": "y", "ြ": "y", "ွ": "w", "ှ": "h" };
+  var RHYMES2 = {
+    "": "a",
+    "ာ": "a:",
+    "ါ": "a:",
+    "ိ": "i",
+    "ီ": "i:",
+    "ု": "u",
+    "ူ": "u:",
+    "ေ": "e:",
+    "ဲ": "e:",
+    "ော": "o:",
+    [`ော${ASAT}`]: "o:",
+    "ို": "o:",
+    "ံ": "an",
+    // 末子音つき
+    [`က${ASAT}`]: "eQ",
+    [`ဂ${ASAT}`]: "eQ",
+    [`င${ASAT}`]: "in",
+    [`စ${ASAT}`]: "iQ",
+    [`ဉ${ASAT}`]: "in",
+    [`ည${ASAT}`]: "i:",
+    [`တ${ASAT}`]: "aQ",
+    [`ပ${ASAT}`]: "aQ",
+    [`န${ASAT}`]: "an",
+    [`မ${ASAT}`]: "an",
+    [`ယ${ASAT}`]: "e:",
+    [`ိုက${ASAT}`]: "aiQ",
+    [`ိုင${ASAT}`]: "ain",
+    [`ိတ${ASAT}`]: "eiQ",
+    [`ိပ${ASAT}`]: "eiQ",
+    [`ိန${ASAT}`]: "ein",
+    [`ိမ${ASAT}`]: "ein",
+    [`ိံ`]: "ein",
+    [`ုက${ASAT}`]: "ouQ",
+    [`ုတ${ASAT}`]: "ouQ",
+    [`ုပ${ASAT}`]: "ouQ",
+    [`ုန${ASAT}`]: "oun",
+    [`ုမ${ASAT}`]: "oun",
+    [`ုံ`]: "oun",
+    [`ောက${ASAT}`]: "auQ",
+    [`ောင${ASAT}`]: "aun"
+  };
+  var ROMAN_RHYME = {
+    "": "a",
+    "ာ": "a",
+    "ါ": "a",
+    "ိ": "i",
+    "ီ": "i",
+    "ု": "u",
+    "ူ": "u",
+    "ေ": "e",
+    "ဲ": "e",
+    "ော": "aw",
+    [`ော${ASAT}`]: "aw",
+    "ို": "o",
+    "ံ": "an",
+    [`က${ASAT}`]: "et",
+    [`င${ASAT}`]: "in",
+    [`စ${ASAT}`]: "it",
+    [`တ${ASAT}`]: "at",
+    [`ပ${ASAT}`]: "at",
+    [`န${ASAT}`]: "an",
+    [`မ${ASAT}`]: "an",
+    [`ယ${ASAT}`]: "e",
+    [`ိုက${ASAT}`]: "aik",
+    [`ိုင${ASAT}`]: "aing",
+    [`ိတ${ASAT}`]: "eik",
+    [`ိန${ASAT}`]: "ein",
+    [`ုက${ASAT}`]: "ok",
+    [`ုတ${ASAT}`]: "ok",
+    [`ုန${ASAT}`]: "on",
+    [`ုံ`]: "on",
+    [`ောက${ASAT}`]: "auk",
+    [`ောင${ASAT}`]: "aung"
+  };
+  var isConsonant2 = (ch) => ch >= "က" && ch <= "အ";
+  var isDigit = (ch) => ch >= "၀" && ch <= "၉";
+  function unstack(text) {
+    return text.replace(new RegExp(`${ASAT}${VIRAMA}`, "g"), ASAT).replace(new RegExp(`([က-အ])${VIRAMA}`, "g"), `$1${ASAT}`).replace(/ါ/g, "ာ");
+  }
+  function toSyllables(input) {
+    const text = unstack(input);
+    const out = [];
+    let cur = "";
+    let hasOnset = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const ch = text[i];
+      const next = text[i + 1];
+      if (isConsonant2(ch)) {
+        const isCoda = next === ASAT;
+        if (hasOnset && !isCoda) {
+          out.push(cur);
+          cur = "";
+          hasOnset = false;
+        }
+        if (!isCoda) hasOnset = true;
+        cur += ch;
+        continue;
+      }
+      if (isDigit(ch) || /\s/.test(ch)) {
+        if (cur) out.push(cur);
+        out.push(ch);
+        cur = "";
+        hasOnset = false;
+        continue;
+      }
+      cur += ch;
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  function parseSyllable(syllable) {
+    const tone = syllable.includes(HIGH) ? "high" : syllable.includes(CREAKY) ? "creaky" : "level";
+    let s = syllable.replace(new RegExp(`[${CREAKY}${HIGH}]`, "g"), "");
+    const onset = isConsonant2(s[0]) ? s[0] : "";
+    s = onset ? s.slice(1) : s;
+    let medials = "";
+    while (MEDIALS[s[0]] !== void 0) {
+      medials += s[0];
+      s = s.slice(1);
+    }
+    return { onset, medials, rhyme: s, tone };
+  }
+  function onsetPhonemes(onset, medials) {
+    let base = ONSET2[onset] ?? "";
+    const hasY = medials.includes("ျ") || medials.includes("ြ");
+    const hasW = medials.includes("ွ");
+    if (hasY && (base === "k" || base === "g")) {
+      base = base === "k" ? "tS" : "dZ";
+      return base + (hasW ? "w" : "");
+    }
+    return base + (hasY ? "y" : "") + (hasW ? "w" : "");
+  }
+  var VOICED = { k: "g", t: "d", p: "b", s: "z", tS: "dZ", ky: "gy", py: "by", kw: "gw" };
+  function resolveRhyme(rhyme) {
+    if (RHYMES2[rhyme] !== void 0) return { phonemes: RHYMES2[rhyme], exact: true };
+    const codas = [...rhyme.matchAll(new RegExp(`[က-အ]${ASAT}`, "g"))];
+    if (codas.length > 1) {
+      const first = rhyme.slice(0, codas[0].index + 2);
+      if (RHYMES2[first] !== void 0) return { phonemes: RHYMES2[first], exact: false };
+    }
+    const vowelsOnly = rhyme.replace(new RegExp(`[က-အ]${ASAT}`, "g"), "");
+    if (RHYMES2[vowelsOnly] !== void 0) return { phonemes: RHYMES2[vowelsOnly], exact: false };
+    return { phonemes: "a", exact: false };
+  }
+  var my_default = {
+    code: "my",
+    label: "ビルマ語（ミャンマー）",
+    ocr: "mya",
+    speech: "my-MM",
+    script: "myanmar",
+    // 密な文字なので、認識にかける画像を大きめに取る
+    scanScale: 2200,
+    read(word) {
+      let kana = "";
+      let roman = "";
+      let unknown = 0;
+      let prevNasal = false;
+      for (const syllable of toSyllables(word)) {
+        if (isDigit(syllable)) {
+          const d = String(syllable.codePointAt(0) - 4160);
+          kana += d;
+          roman += d;
+          continue;
+        }
+        if (/^\s+$/.test(syllable)) {
+          kana += syllable;
+          roman += syllable;
+          continue;
+        }
+        const { onset, medials, rhyme } = parseSyllable(syllable);
+        const { phonemes: rhymePhonemes, exact } = resolveRhyme(rhyme);
+        if (!exact) unknown += 1;
+        let head = onsetPhonemes(onset, medials);
+        if (prevNasal) head = VOICED[head] ?? head;
+        prevNasal = rhymePhonemes.endsWith("n");
+        kana += toKatakana(head + rhymePhonemes);
+        roman += (ROMAN_ONSET2[onset] ?? "") + (medials.includes("ွ") ? "w" : "") + (ROMAN_RHYME[rhyme] ?? "");
+      }
+      return { kana, roman, confident: unknown === 0 };
+    }
+  };
+
   // src/lang/ru.js
   var MAP = [
     ["щ", "SitS", "shch"],
@@ -2574,13 +2869,14 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   });
 
   // src/lang/index.js
-  var LANGUAGES = [en_default, zh_default, ko_default, vi_default, es, fr_default, de_default, it, pt, ru_default, el_default];
+  var LANGUAGES = [en_default, zh_default, ko_default, vi_default, my_default, es, fr_default, de_default, it, pt, ru_default, el_default];
   var byCode = Object.fromEntries(LANGUAGES.map((l) => [l.code, l]));
   function getLanguage(code) {
     return byCode[code] ?? en_default;
   }
   var SCRIPT_TEST = [
     ["ko", /[가-힣]/],
+    ["my", /[\u1000-\u109F]/],
     ["zh", /[一-鿿㐀-䶿]/],
     ["ru", /[Ѐ-ӿ]/],
     ["el", /[Ͱ-Ͽἀ-῿]/]
@@ -2609,16 +2905,6 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     }
     if (scores.size === 0) return "en";
     return [...scores.entries()].sort((a, b) => b[1] - a[1])[0][0];
-  }
-  function tokenize2(text, code) {
-    const perChar = code === "zh";
-    const tokens = [];
-    const re = perChar ? /([一-鿿㐀-䶿])|([^\s一-鿿㐀-䶿]+)|(\s+)/g : /([\p{L}\p{M}\p{N}''-]+)|([^\p{L}\p{M}\p{N}''-]+)/gu;
-    for (const m of text.matchAll(re)) {
-      const word = perChar ? m[1] ?? m[2] ?? null : m[1] ?? null;
-      tokens.push({ text: m[0], isWord: word !== null });
-    }
-    return tokens;
   }
 
   // src/ocr.js
@@ -2714,15 +3000,31 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     visit(data.blocks ?? []);
     return lines;
   }
+  function buildWords(data) {
+    const lines = collectLines(data).map((line) => ({ ...line }));
+    const words = [];
+    for (const line of lines) {
+      line.items = (line.words ?? []).filter((w) => w.text?.trim()).map((w) => {
+        const item = { id: words.length, text: w.text, bbox: w.bbox, confidence: w.confidence ?? 0 };
+        words.push(item);
+        return item;
+      });
+    }
+    if (words.length === 0) {
+      for (const w of collectWords(data)) {
+        words.push({ id: words.length, ...w });
+      }
+      if (words.length) {
+        lines.push({ text: words.map((w) => w.text).join(" "), items: words });
+      }
+    }
+    return { words, lines: lines.filter((l) => l.items?.length) };
+  }
   async function recognize(canvas2, lang, onProgress) {
     const worker = await getWorker(lang, onProgress);
     const { data } = await worker.recognize(canvas2, {}, { text: true, blocks: true });
-    return {
-      text: data.text ?? "",
-      words: collectWords(data),
-      lines: collectLines(data),
-      confidence: data.confidence ?? 0
-    };
+    const { words, lines } = buildWords(data);
+    return { text: data.text ?? "", words, lines, confidence: data.confidence ?? 0 };
   }
 
   // src/enhance.js
@@ -4489,7 +4791,12 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     shareNote: $("share-note"),
     qr: $("qr"),
     qrCode: $("qr-code"),
-    installHint: $("install-hint")
+    installHint: $("install-hint"),
+    scope: $("scope"),
+    pickTools: $("pick-tools"),
+    pickCount: $("pick-count"),
+    pickAll: $("btn-pick-all"),
+    pickNone: $("btn-pick-none")
   };
   var MAX_EDGE = 1600;
   var STORE_KEY = "rubycam.lang";
@@ -4513,6 +4820,14 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   var canvas = null;
   var lastResult = null;
   var busy = false;
+  var picked = /* @__PURE__ */ new Set();
+  var picking = () => el.scope.value === "picked";
+  var rubyOn = (item) => !picking() || picked.has(item.id);
+  function togglePick(item) {
+    if (picked.has(item.id)) picked.delete(item.id);
+    else picked.add(item.id);
+    render2();
+  }
   LANGUAGES.forEach((l) => {
     const o = document.createElement("option");
     o.value = l.code;
@@ -4527,6 +4842,18 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     if (lastResult) render2();
   });
   el.style.addEventListener("change", () => lastResult && render2());
+  el.scope.addEventListener("change", () => {
+    el.pickTools.hidden = !picking();
+    if (lastResult) render2();
+  });
+  el.pickAll.addEventListener("click", () => {
+    lastResult?.words.forEach((w) => picked.add(w.id));
+    render2();
+  });
+  el.pickNone.addEventListener("click", () => {
+    picked.clear();
+    render2();
+  });
   el.toggleOverlay.addEventListener("change", () => lastResult && render2());
   el.dialect.addEventListener("change", () => {
     store.set(DIALECT_KEY, el.dialect.value);
@@ -4552,12 +4879,11 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     }
     startCamera();
   });
-  setStatus(defaultStatus());
   el.speak.addEventListener("click", speakAll);
   el.copy.addEventListener("click", copyReadings);
   function syncStyleOptions() {
     const lang = getLanguage(el.lang.value);
-    const supportsRoman = ["ko", "ru", "el", "zh"].includes(lang.code);
+    const supportsRoman = ["ko", "ru", "el", "zh", "my"].includes(lang.code);
     el.style.disabled = !supportsRoman;
     if (!supportsRoman) el.style.value = "kana";
     if (lang.code === "zh") el.style.value = el.style.value === "kana" ? "kana" : "roman";
@@ -4635,7 +4961,8 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     ev.target.value = "";
   }
   function setImage(source, width, height) {
-    const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
+    const maxEdge = getLanguage(el.lang.value).scanScale ?? MAX_EDGE;
+    const scale = Math.min(1, maxEdge / Math.max(width, height));
     canvas = document.createElement("canvas");
     canvas.width = Math.round(width * scale);
     canvas.height = Math.round(height * scale);
@@ -4646,6 +4973,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   }
   function reset() {
     lastResult = null;
+    picked.clear();
     canvas = null;
     el.overlay.replaceChildren();
     el.stage.classList.remove("shot");
@@ -4680,6 +5008,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
         return;
       }
       lastResult = result;
+      picked.clear();
       render2();
       suggestLanguage(result.text);
       const fixed = countFixed(lang);
@@ -4725,6 +5054,13 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     renderOverlay(lang);
     renderText(lang);
     renderToneLegend(lang);
+    renderPickTools();
+  }
+  function renderPickTools() {
+    el.pickTools.hidden = !picking();
+    if (!picking()) return;
+    const total = lastResult?.words.length ?? 0;
+    el.pickCount.textContent = picked.size ? `${total}語のうち${picked.size}語を選んでいます` : "写真の上か下の文章で、ルビをふりたい語を押してください（写真の上はなぞって囲むこともできます）";
   }
   function renderToneLegend(lang) {
     el.toneLegend.replaceChildren();
@@ -4749,59 +5085,121 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     if (!el.toggleOverlay.checked || !lastResult || !canvas) return;
     const W = canvas.width;
     const H = canvas.height;
+    el.overlay.classList.toggle("picking", picking());
     for (const w of lastResult.words) {
       if (!w.bbox) continue;
       const r = readingOf(lang, w.text);
       if (!r) continue;
+      const on = rubyOn(w);
       const { x0, y0, x1, y1 } = w.bbox;
       const box = document.createElement("div");
       const nearTop = y0 / H < 0.09;
-      box.className = `w${r.weak ? " weak" : ""}${nearTop ? " below" : ""}${r.fixedFrom ? " fixed" : ""}`;
+      box.className = `w${r.weak ? " weak" : ""}${nearTop ? " below" : ""}${r.fixedFrom ? " fixed" : ""}` + (picking() ? on ? " on" : " off" : "");
       box.style.left = `${x0 / W * 100}%`;
       box.style.top = `${y0 / H * 100}%`;
       box.style.width = `${(x1 - x0) / W * 100}%`;
       box.style.height = `${(y1 - y0) / H * 100}%`;
-      const rt = document.createElement("b");
-      rt.append(...rubyNodes(r));
-      const byHeight = (y1 - y0) / W * 100 * 0.62;
-      const byWidth = (x1 - x0) / W * 100 * 1.7 / Math.max(1, (r.text.length + r.sign.length) * 0.62);
-      rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
-      box.append(rt);
+      if (on) {
+        const rt = document.createElement("b");
+        rt.append(...rubyNodes(r));
+        const byHeight = (y1 - y0) / W * 100 * 0.62;
+        const byWidth = (x1 - x0) / W * 100 * 1.7 / Math.max(1, (r.text.length + r.sign.length) * 0.62);
+        rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
+        box.append(rt);
+      }
       box.title = r.fixedFrom ? `${r.fixedFrom} → ${r.source}` : w.text;
-      box.addEventListener("click", () => speak(w.text, lang));
+      box.addEventListener("click", () => picking() ? togglePick(w) : speak(w.text, lang));
       el.overlay.append(box);
     }
+  }
+  function setUpRegionPick() {
+    let start = null;
+    let rect = null;
+    el.overlay.addEventListener("pointerdown", (ev) => {
+      if (!picking() || !lastResult) return;
+      start = { x: ev.offsetX, y: ev.offsetY };
+      rect = document.createElement("div");
+      rect.className = "sel-rect";
+      el.overlay.append(rect);
+      el.overlay.setPointerCapture(ev.pointerId);
+    });
+    el.overlay.addEventListener("pointermove", (ev) => {
+      if (!start || !rect) return;
+      const box = boundsOf(start, { x: ev.offsetX, y: ev.offsetY });
+      Object.assign(rect.style, {
+        left: `${box.left}px`,
+        top: `${box.top}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`
+      });
+    });
+    el.overlay.addEventListener("pointerup", (ev) => {
+      if (!start) return;
+      const box = boundsOf(start, { x: ev.offsetX, y: ev.offsetY });
+      rect?.remove();
+      start = null;
+      rect = null;
+      if (box.width < 8 && box.height < 8) return;
+      const view = el.overlay.getBoundingClientRect();
+      for (const w of lastResult.words) {
+        if (!w.bbox) continue;
+        const cx = (w.bbox.x0 + w.bbox.x1) / 2 / canvas.width * view.width;
+        const cy = (w.bbox.y0 + w.bbox.y1) / 2 / canvas.height * view.height;
+        if (cx >= box.left && cx <= box.left + box.width && cy >= box.top && cy <= box.top + box.height) {
+          picked.add(w.id);
+        }
+      }
+      render2();
+    });
+  }
+  function boundsOf(a, b) {
+    return {
+      left: Math.min(a.x, b.x),
+      top: Math.min(a.y, b.y),
+      width: Math.abs(a.x - b.x),
+      height: Math.abs(a.y - b.y)
+    };
   }
   function renderText(lang) {
     el.textView.replaceChildren();
     if (!lastResult) return;
-    const lines = lastResult.lines.length ? lastResult.lines.map((l) => l.text) : lastResult.text.split("\n");
-    for (const line of lines) {
-      if (!line.trim()) continue;
+    const perChar = lang.code === "zh";
+    for (const line of lastResult.lines) {
       const p = document.createElement("p");
-      for (const token of tokenize2(line, lang.code)) {
-        if (!token.isWord) {
-          p.append(token.text);
-          continue;
+      line.items.forEach((item, i) => {
+        if (i > 0 && !perChar) p.append(" ");
+        for (const piece of perChar ? [...item.text] : [item.text]) {
+          p.append(...renderWord(lang, item, piece));
         }
-        const r = readingOf(lang, token.text);
-        if (!r) {
-          p.append(token.text);
-          continue;
-        }
-        const ruby = document.createElement("ruby");
-        ruby.className = `${r.weak ? "weak " : ""}${r.fixedFrom ? "fixed" : ""}`.trim();
-        if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
-        ruby.append(token.text);
-        const rt = document.createElement("rt");
-        rt.append(...rubyNodes(r));
-        ruby.append(rt);
-        ruby.addEventListener("click", () => speak(token.text, lang));
-        p.append(ruby);
-      }
-      el.textView.append(p);
+      });
+      if (p.childNodes.length) el.textView.append(p);
     }
     el.textPanel.hidden = el.textView.childElementCount === 0;
+  }
+  function renderWord(lang, item, piece) {
+    const [, before, core, after] = piece.match(/^([^\p{L}\p{M}\p{N}]*)(.*?)([^\p{L}\p{M}\p{N}]*)$/u);
+    const r = core ? readingOf(lang, core) : null;
+    const nodes = [];
+    if (before) nodes.push(document.createTextNode(before));
+    if (!r || !rubyOn(item)) {
+      const span = document.createElement("span");
+      span.className = picking() ? "word pickable" : "word";
+      span.textContent = core;
+      if (picking()) span.addEventListener("click", () => togglePick(item));
+      nodes.push(span);
+    } else {
+      const ruby = document.createElement("ruby");
+      ruby.className = `${r.weak ? "weak " : ""}${r.fixedFrom ? "fixed" : ""}`.trim();
+      if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
+      ruby.append(core);
+      const rt = document.createElement("rt");
+      rt.append(...rubyNodes(r));
+      ruby.append(rt);
+      ruby.addEventListener("click", () => picking() ? togglePick(item) : speak(core, lang));
+      nodes.push(ruby);
+    }
+    if (after) nodes.push(document.createTextNode(after));
+    return nodes;
   }
   function countFixed(lang) {
     if (!lang.correct || !lastResult) return 0;
@@ -4840,14 +5238,18 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   async function copyReadings() {
     if (!lastResult) return;
     const lang = getLanguage(el.lang.value);
-    const out = (lastResult.lines.length ? lastResult.lines.map((l) => l.text) : lastResult.text.split("\n")).filter((l) => l.trim()).map((line) => {
-      const reads = tokenize2(line, lang.code).filter((t) => t.isWord).map((t) => {
-        const r = readingOf(lang, t.text);
-        return r ? r.text + r.sign : t.text;
-      }).join(lang.code === "zh" ? "" : " ");
-      return `${line}
+    const join = lang.code === "zh" ? "" : " ";
+    const out = lastResult.lines.map((line) => {
+      const shown = line.items.filter((item) => rubyOn(item));
+      if (!shown.length) return "";
+      const source = shown.map((item) => item.text).join(join);
+      const reads = shown.map((item) => {
+        const r = readingOf(lang, item.text);
+        return r ? r.text + r.sign : item.text;
+      }).join(join);
+      return `${source}
 ${reads}`;
-    }).join("\n\n");
+    }).filter(Boolean).join("\n\n");
     try {
       await navigator.clipboard.writeText(out);
       setStatus("読みをコピーしました。");
@@ -4959,6 +5361,8 @@ ${reads}`;
   warnAboutBrowser();
   setUpShare();
   suggestInstall();
+  setUpRegionPick();
+  setStatus(defaultStatus());
   if ("serviceWorker" in navigator && location.protocol === "https:" && !window.__RUBYCAM_SINGLE_FILE__) {
     navigator.serviceWorker.register("sw.js").catch(() => {
     });

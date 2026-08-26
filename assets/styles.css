@@ -94,6 +94,24 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 .overlay .w.below b { bottom: auto; top: 100%; }
 .overlay .w.weak b { color: var(--ruby-weak); }
 
+/* ルビをふる語を選ぶとき */
+.overlay.picking { pointer-events: auto; cursor: crosshair; }
+.overlay .w.off { border-bottom-color: rgba(147, 163, 177, 0.55); border-bottom-style: dashed; }
+.overlay .w.on { background: rgba(77, 163, 255, 0.18); }
+.sel-rect {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: rgba(77, 163, 255, 0.15);
+  pointer-events: none;
+}
+.pick-tools { align-items: center; margin-top: 0.6rem; }
+.pick-tools .note { margin: 0; }
+.text-view .word.pickable {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--muted);
+}
+.text-view .word.pickable:hover { background: #223447; border-radius: 4px; }
+
 .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
 
 .btn {

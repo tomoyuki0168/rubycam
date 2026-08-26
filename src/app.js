@@ -1,5 +1,5 @@
 /** 画面まわり — 撮影、文字認識、ルビの生成と表示 */
-import { LANGUAGES, getLanguage, detectLanguage, tokenize } from './lang/index.js';
+import { LANGUAGES, getLanguage, detectLanguage } from './lang/index.js';
 import { recognize } from './ocr.js';
 import { enhance } from './enhance.js';
 import { makeQrSvg } from './qr.js';
@@ -21,8 +21,11 @@ const el = {
   sharePanel: $('share-panel'), shareUrl: $('share-url'), shareActions: $('share-actions'),
   share: $('btn-share'), line: $('btn-line'), copyUrl: $('btn-copy-url'), shareNote: $('share-note'),
   qr: $('qr'), qrCode: $('qr-code'), installHint: $('install-hint'),
+  scope: $('scope'), pickTools: $('pick-tools'), pickCount: $('pick-count'),
+  pickAll: $('btn-pick-all'), pickNone: $('btn-pick-none'),
 };
 
+// 認識にかける画像の長辺。細かい文字の言語ほど大きく取る
 const MAX_EDGE = 1600;
 const STORE_KEY = 'rubycam.lang';
 const DIALECT_KEY = 'rubycam.dialect';
@@ -56,6 +59,17 @@ let canvas = null;
 let lastResult = null;
 let busy = false;
 
+// ルビをふる語の指定。空のときは「選んだ語だけ」でも何も出ない
+const picked = new Set();
+const picking = () => el.scope.value === 'picked';
+const rubyOn = (item) => !picking() || picked.has(item.id);
+
+function togglePick(item) {
+  if (picked.has(item.id)) picked.delete(item.id);
+  else picked.add(item.id);
+  render();
+}
+
 /* ---------------- 初期化 ---------------- */
 
 LANGUAGES.forEach((l) => {
@@ -73,6 +87,18 @@ el.lang.addEventListener('change', () => {
   if (lastResult) render();
 });
 el.style.addEventListener('change', () => lastResult && render());
+el.scope.addEventListener('change', () => {
+  el.pickTools.hidden = !picking();
+  if (lastResult) render();
+});
+el.pickAll.addEventListener('click', () => {
+  lastResult?.words.forEach((w) => picked.add(w.id));
+  render();
+});
+el.pickNone.addEventListener('click', () => {
+  picked.clear();
+  render();
+});
 el.toggleOverlay.addEventListener('change', () => lastResult && render());
 el.dialect.addEventListener('change', () => {
   store.set(DIALECT_KEY, el.dialect.value);
@@ -113,14 +139,13 @@ el.cameraBtn.addEventListener('click', () => {
   startCamera();
 });
 
-setStatus(defaultStatus());
 el.speak.addEventListener('click', speakAll);
 el.copy.addEventListener('click', copyReadings);
 
 /** 選んだ言語に関係のない設定は出さない */
 function syncStyleOptions() {
   const lang = getLanguage(el.lang.value);
-  const supportsRoman = ['ko', 'ru', 'el', 'zh'].includes(lang.code);
+  const supportsRoman = ['ko', 'ru', 'el', 'zh', 'my'].includes(lang.code);
   el.style.disabled = !supportsRoman;
   if (!supportsRoman) el.style.value = 'kana';
   if (lang.code === 'zh') el.style.value = el.style.value === 'kana' ? 'kana' : 'roman';
@@ -212,7 +237,8 @@ function onFile(ev) {
 
 /** 長辺を抑えた canvas に描き直す（認識を速くするため） */
 function setImage(source, width, height) {
-  const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
+  const maxEdge = getLanguage(el.lang.value).scanScale ?? MAX_EDGE;
+  const scale = Math.min(1, maxEdge / Math.max(width, height));
   canvas = document.createElement('canvas');
   canvas.width = Math.round(width * scale);
   canvas.height = Math.round(height * scale);
@@ -224,6 +250,7 @@ function setImage(source, width, height) {
 
 function reset() {
   lastResult = null;
+  picked.clear();
   canvas = null;
   el.overlay.replaceChildren();
   el.stage.classList.remove('shot');
@@ -264,6 +291,7 @@ async function run() {
     }
 
     lastResult = result;
+    picked.clear();
     render();
     suggestLanguage(result.text);
     const fixed = countFixed(lang);
@@ -317,6 +345,17 @@ function render() {
   renderOverlay(lang);
   renderText(lang);
   renderToneLegend(lang);
+  renderPickTools();
+}
+
+/** 選択の状況を出す */
+function renderPickTools() {
+  el.pickTools.hidden = !picking();
+  if (!picking()) return;
+  const total = lastResult?.words.length ?? 0;
+  el.pickCount.textContent = picked.size
+    ? `${total}語のうち${picked.size}語を選んでいます`
+    : '写真の上か下の文章で、ルビをふりたい語を押してください（写真の上はなぞって囲むこともできます）';
 }
 
 /** 声調のある言語では、ルビに添えた記号の意味を出す */
@@ -345,65 +384,140 @@ function renderOverlay(lang) {
   const W = canvas.width;
   const H = canvas.height;
 
+  el.overlay.classList.toggle('picking', picking());
+
   for (const w of lastResult.words) {
     if (!w.bbox) continue;
     const r = readingOf(lang, w.text);
     if (!r) continue;
+    const on = rubyOn(w);
     const { x0, y0, x1, y1 } = w.bbox;
     const box = document.createElement('div');
     const nearTop = y0 / H < 0.09;
-    box.className = `w${r.weak ? ' weak' : ''}${nearTop ? ' below' : ''}${r.fixedFrom ? ' fixed' : ''}`;
+    box.className = `w${r.weak ? ' weak' : ''}${nearTop ? ' below' : ''}${r.fixedFrom ? ' fixed' : ''}`
+      + (picking() ? (on ? ' on' : ' off') : '');
     box.style.left = `${(x0 / W) * 100}%`;
     box.style.top = `${(y0 / H) * 100}%`;
     box.style.width = `${((x1 - x0) / W) * 100}%`;
     box.style.height = `${((y1 - y0) / H) * 100}%`;
-    const rt = document.createElement('b');
-    rt.append(...rubyNodes(r));
-    // 文字の高さに合わせる。cqw なので写真を縮めてもルビの比率は崩れない。
-    // 語の幅よりルビが長くなりすぎると隣とぶつかるので、幅でも頭を押さえる
-    const byHeight = ((y1 - y0) / W) * 100 * 0.62;
-    const byWidth = (((x1 - x0) / W) * 100 * 1.7) / Math.max(1, (r.text.length + r.sign.length) * 0.62);
-    rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
-    box.append(rt);
+
+    if (on) {
+      const rt = document.createElement('b');
+      rt.append(...rubyNodes(r));
+      // 文字の高さに合わせる。cqw なので写真を縮めてもルビの比率は崩れない。
+      // 語の幅よりルビが長くなりすぎると隣とぶつかるので、幅でも頭を押さえる
+      const byHeight = ((y1 - y0) / W) * 100 * 0.62;
+      const byWidth = (((x1 - x0) / W) * 100 * 1.7) / Math.max(1, (r.text.length + r.sign.length) * 0.62);
+      rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
+      box.append(rt);
+    }
+
     box.title = r.fixedFrom ? `${r.fixedFrom} → ${r.source}` : w.text;
-    box.addEventListener('click', () => speak(w.text, lang));
+    box.addEventListener('click', () => (picking() ? togglePick(w) : speak(w.text, lang)));
     el.overlay.append(box);
   }
+}
+
+/** 写真の上をなぞって、囲んだ範囲の語をまとめて選ぶ */
+function setUpRegionPick() {
+  let start = null;
+  let rect = null;
+
+  el.overlay.addEventListener('pointerdown', (ev) => {
+    if (!picking() || !lastResult) return;
+    start = { x: ev.offsetX, y: ev.offsetY };
+    rect = document.createElement('div');
+    rect.className = 'sel-rect';
+    el.overlay.append(rect);
+    el.overlay.setPointerCapture(ev.pointerId);
+  });
+
+  el.overlay.addEventListener('pointermove', (ev) => {
+    if (!start || !rect) return;
+    const box = boundsOf(start, { x: ev.offsetX, y: ev.offsetY });
+    Object.assign(rect.style, {
+      left: `${box.left}px`, top: `${box.top}px`,
+      width: `${box.width}px`, height: `${box.height}px`,
+    });
+  });
+
+  el.overlay.addEventListener('pointerup', (ev) => {
+    if (!start) return;
+    const box = boundsOf(start, { x: ev.offsetX, y: ev.offsetY });
+    rect?.remove();
+    start = null;
+    rect = null;
+    // ほとんど動いていなければ、なぞりではなく語への操作とみなす
+    if (box.width < 8 && box.height < 8) return;
+
+    const view = el.overlay.getBoundingClientRect();
+    for (const w of lastResult.words) {
+      if (!w.bbox) continue;
+      const cx = ((w.bbox.x0 + w.bbox.x1) / 2 / canvas.width) * view.width;
+      const cy = ((w.bbox.y0 + w.bbox.y1) / 2 / canvas.height) * view.height;
+      if (cx >= box.left && cx <= box.left + box.width && cy >= box.top && cy <= box.top + box.height) {
+        picked.add(w.id);
+      }
+    }
+    render();
+  });
+}
+
+function boundsOf(a, b) {
+  return {
+    left: Math.min(a.x, b.x),
+    top: Math.min(a.y, b.y),
+    width: Math.abs(a.x - b.x),
+    height: Math.abs(a.y - b.y),
+  };
 }
 
 function renderText(lang) {
   el.textView.replaceChildren();
   if (!lastResult) return;
-  const lines = lastResult.lines.length
-    ? lastResult.lines.map((l) => l.text)
-    : lastResult.text.split('\n');
+  // 漢字は1文字ずつルビを振る。選ぶ単位は認識した語のまま
+  const perChar = lang.code === 'zh';
 
-  for (const line of lines) {
-    if (!line.trim()) continue;
+  for (const line of lastResult.lines) {
     const p = document.createElement('p');
-    for (const token of tokenize(line, lang.code)) {
-      if (!token.isWord) {
-        p.append(token.text);
-        continue;
+    line.items.forEach((item, i) => {
+      if (i > 0 && !perChar) p.append(' ');
+      for (const piece of perChar ? [...item.text] : [item.text]) {
+        p.append(...renderWord(lang, item, piece));
       }
-      const r = readingOf(lang, token.text);
-      if (!r) {
-        p.append(token.text);
-        continue;
-      }
-      const ruby = document.createElement('ruby');
-      ruby.className = `${r.weak ? 'weak ' : ''}${r.fixedFrom ? 'fixed' : ''}`.trim();
-      if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
-      ruby.append(token.text);
-      const rt = document.createElement('rt');
-      rt.append(...rubyNodes(r));
-      ruby.append(rt);
-      ruby.addEventListener('click', () => speak(token.text, lang));
-      p.append(ruby);
-    }
-    el.textView.append(p);
+    });
+    if (p.childNodes.length) el.textView.append(p);
   }
   el.textPanel.hidden = el.textView.childElementCount === 0;
+}
+
+/** 1語を、前後の記号と読みに分けて組み立てる */
+function renderWord(lang, item, piece) {
+  const [, before, core, after] = piece.match(/^([^\p{L}\p{M}\p{N}]*)(.*?)([^\p{L}\p{M}\p{N}]*)$/u);
+  const r = core ? readingOf(lang, core) : null;
+  const nodes = [];
+  if (before) nodes.push(document.createTextNode(before));
+
+  if (!r || !rubyOn(item)) {
+    const span = document.createElement('span');
+    span.className = picking() ? 'word pickable' : 'word';
+    span.textContent = core;
+    if (picking()) span.addEventListener('click', () => togglePick(item));
+    nodes.push(span);
+  } else {
+    const ruby = document.createElement('ruby');
+    ruby.className = `${r.weak ? 'weak ' : ''}${r.fixedFrom ? 'fixed' : ''}`.trim();
+    if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
+    ruby.append(core);
+    const rt = document.createElement('rt');
+    rt.append(...rubyNodes(r));
+    ruby.append(rt);
+    ruby.addEventListener('click', () => (picking() ? togglePick(item) : speak(core, lang)));
+    nodes.push(ruby);
+  }
+
+  if (after) nodes.push(document.createTextNode(after));
+  return nodes;
 }
 
 /** 文字認識の綴りを直した語の数 */
@@ -451,18 +565,21 @@ function speakAll() {
 async function copyReadings() {
   if (!lastResult) return;
   const lang = getLanguage(el.lang.value);
-  const out = (lastResult.lines.length ? lastResult.lines.map((l) => l.text) : lastResult.text.split('\n'))
-    .filter((l) => l.trim())
+  const join = lang.code === 'zh' ? '' : ' ';
+  const out = lastResult.lines
     .map((line) => {
-      const reads = tokenize(line, lang.code)
-        .filter((t) => t.isWord)
-        .map((t) => {
-          const r = readingOf(lang, t.text);
-          return r ? r.text + r.sign : t.text;
+      const shown = line.items.filter((item) => rubyOn(item));
+      if (!shown.length) return '';
+      const source = shown.map((item) => item.text).join(join);
+      const reads = shown
+        .map((item) => {
+          const r = readingOf(lang, item.text);
+          return r ? r.text + r.sign : item.text;
         })
-        .join(lang.code === 'zh' ? '' : ' ');
-      return `${line}\n${reads}`;
+        .join(join);
+      return `${source}\n${reads}`;
     })
+    .filter(Boolean)
     .join('\n\n');
   try {
     await navigator.clipboard.writeText(out);
@@ -625,6 +742,8 @@ function suggestInstall() {
 warnAboutBrowser();
 setUpShare();
 suggestInstall();
+setUpRegionPick();
+setStatus(defaultStatus());
 
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.__RUBYCAM_SINGLE_FILE__) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -108,15 +108,45 @@ function collectLines(data) {
   return lines;
 }
 
+/**
+ * 行と語を組み立てる
+ *
+ * 写真に重ねる表示と文章の表示で同じ語を指せるよう、
+ * 語には通し番号を振り、両方から同じ実体を参照する。
+ * 「この語にだけルビをふる」を扱うために要る。
+ */
+function buildWords(data) {
+  const lines = collectLines(data).map((line) => ({ ...line }));
+  const words = [];
+
+  for (const line of lines) {
+    line.items = (line.words ?? [])
+      .filter((w) => w.text?.trim())
+      .map((w) => {
+        const item = { id: words.length, text: w.text, bbox: w.bbox, confidence: w.confidence ?? 0 };
+        words.push(item);
+        return item;
+      });
+  }
+
+  // 行が取れない結果もあるので、そのときは語だけを1行として扱う
+  if (words.length === 0) {
+    for (const w of collectWords(data)) {
+      words.push({ id: words.length, ...w });
+    }
+    if (words.length) {
+      lines.push({ text: words.map((w) => w.text).join(' '), items: words });
+    }
+  }
+
+  return { words, lines: lines.filter((l) => l.items?.length) };
+}
+
 export async function recognize(canvas, lang, onProgress) {
   const worker = await getWorker(lang, onProgress);
   const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
-  return {
-    text: data.text ?? '',
-    words: collectWords(data),
-    lines: collectLines(data),
-    confidence: data.confidence ?? 0,
-  };
+  const { words, lines } = buildWords(data);
+  return { text: data.text ?? '', words, lines, confidence: data.confidence ?? 0 };
 }
 
 export async function terminateAll() {

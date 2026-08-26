@@ -6,7 +6,7 @@
  * 通信できないときだけキャッシュに落とすことで、更新の確実さと
  * オフラインでの動作を両立させる。
  */
-const CACHE = 'rubycam-v5';
+const CACHE = 'rubycam-v6';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './assets/styles.css', './assets/icon.svg',
@@ -16,6 +16,7 @@ const ASSETS = [
   './src/lang/index.js', './src/lang/rules.js', './src/lang/en.js', './src/lang/en-dict.js',
   './src/lang/ko.js', './src/lang/zh.js', './src/lang/vi.js', './src/lang/ru.js',
   './src/lang/el.js', './src/lang/de.js', './src/lang/fr.js', './src/lang/romance.js',
+  './src/lang/my.js',
 ];
 
 self.addEventListener('install', (e) => {

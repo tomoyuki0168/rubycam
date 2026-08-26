@@ -7,6 +7,7 @@ import { pinyinToKatakana } from '../src/lang/zh.js';
 import { decompose, applySandhi } from '../src/lang/ko.js';
 import { EN_DICT } from '../src/lang/en-dict.js';
 import { correctSyllable, isSyllable } from '../src/lang/vi.js';
+import { unstack, toSyllables } from '../src/lang/my.js';
 
 const reads = (code, cases) => {
   const lang = getLanguage(code);
@@ -183,6 +184,38 @@ test('ベトナム語 — 読めない綴りでも当て読みを返す', () => 
   assert.ok(r.kana.length > 0);
 });
 
+test('ビルマ語 — 音節に切って読む', () => {
+  const my = getLanguage('my');
+  const kana = (w) => my.read(w).kana;
+  assert.equal(kana('မြန်မာ'), 'ミャンマー');
+  assert.equal(kana('ရေ'), 'イェー');            // ေ は子音のあとに置かれる
+  assert.equal(kana('ထမင်း'), 'タミン');
+  assert.equal(kana('ကျောင်း'), 'チャウン');      // ကျ は破擦音になる
+  assert.equal(kana('စာအုပ်'), 'サーオウッ');
+  assert.equal(kana('ဆေးရုံ'), 'セーヨウン');
+  assert.equal(my.read('ရဲစခန်း').roman, 'yesakhan');
+});
+
+test('ビルマ語 — 積み重ねをほどく', () => {
+  // 「C1 ္ C2」は C1 が前の音節の末子音になる
+  assert.equal(unstack('မန္တလေး'), 'မန်တလေး');
+  assert.equal(getLanguage('my').read('မန္တလေး').kana, 'マンダレー');
+  // キンズィ（င်္）も同じ
+  assert.equal(getLanguage('my').read('မင်္ဂလာပါ').kana, 'ミンガラーパー');
+});
+
+test('ビルマ語 — 鼻音のあとの無声音は濁る', () => {
+  const my = getLanguage('my');
+  assert.equal(my.read('ရန်ကုန်').kana, 'ヤンゴウン');
+  assert.equal(my.read('ဝင်ပေါက်').kana, 'ウィンバウッ');
+});
+
+test('ビルマ語 — 表に無い韻も読みを返す', () => {
+  const r = getLanguage('my').read('ဘတ်စ်ကား');
+  assert.equal(r.confident, false);
+  assert.ok(r.kana.length > 0);
+});
+
 test('中国語 — ピンインからカタカナ', () => {
   assert.equal(pinyinToKatakana('běi'), 'ベイ');
   assert.equal(pinyinToKatakana('jīng'), 'ジン');
@@ -210,6 +243,7 @@ test('言語の推定', () => {
     ko: '이 영수증을 보관해 주세요.',
     zh: '请保留此收据以备查询。',
     el: 'Παρακαλώ φυλάξτε την απόδειξη.',
+    my: 'ဤဘောက်ချာကို သိမ်းထားပါ။',
   };
   for (const [code, text] of Object.entries(cases)) {
     assert.equal(detectLanguage(text), code, text);
