@@ -41,8 +41,12 @@ LINE や端末の共有メニューにそのまま流せます。
 URLで開いた場合だけ、画面内にカメラ映像を出してその場で撮る操作ができます。
 
 > 初回だけリポジトリ側の設定が要ります。
-> **Settings → Pages → Source を「GitHub Actions」** に変えると、
-> `.github/workflows/pages.yml` が動いて公開されます。
+> **Settings → Pages → Source を「GitHub Actions」** に変えてください。
+> 以降は `products/rubycam/` への push で自動的に公開されます。
+>
+> ワークフローから自動で有効化することは**できません**。
+> `GITHUB_TOKEN` には Pages サイトを新規作成する権限が無く、
+> `Resource not accessible by integration` で拒否されます。
 
 ### ファイルを保存して使う
 
