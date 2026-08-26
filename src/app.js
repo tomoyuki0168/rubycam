@@ -5,7 +5,9 @@ import { recognize } from './ocr.js';
 const $ = (id) => document.getElementById(id);
 const el = {
   stage: $('stage'), preview: $('preview'), shot: $('shot'), overlay: $('overlay'),
-  camera: $('btn-camera'), shutter: $('btn-shutter'), retake: $('btn-retake'), file: $('file'),
+  liveControls: $('live-controls'),
+  camera: $('btn-camera'), shutter: $('btn-shutter'), retake: $('btn-retake'),
+  fileCamera: $('file-camera'), fileAlbum: $('file-album'),
   lang: $('lang'), style: $('style'), toggleOverlay: $('toggle-overlay'),
   status: $('status'), progress: $('progress'), bar: $('progress-bar'), hint: $('hint'),
   textPanel: $('text-panel'), textView: $('text-view'),
@@ -42,7 +44,16 @@ el.toggleOverlay.addEventListener('change', () => lastResult && render());
 el.camera.addEventListener('click', startCamera);
 el.shutter.addEventListener('click', shoot);
 el.retake.addEventListener('click', reset);
-el.file.addEventListener('change', onFile);
+el.fileCamera.addEventListener('change', onFile);
+el.fileAlbum.addEventListener('change', onFile);
+
+// https 以外で開くとブラウザがカメラを渡さない。その場合は
+// 「カメラで撮る」（端末の標準カメラを呼ぶ経路）だけを残す
+const liveCameraAvailable = Boolean(navigator.mediaDevices?.getUserMedia);
+if (!liveCameraAvailable) {
+  el.liveControls.hidden = true;
+  setStatus(defaultStatus());
+}
 el.speak.addEventListener('click', speakAll);
 el.copy.addEventListener('click', copyReadings);
 
@@ -58,6 +69,10 @@ function syncStyleOptions() {
 /* ---------------- 撮影 ---------------- */
 
 async function startCamera() {
+  if (!liveCameraAvailable) {
+    setStatus('この開き方では画面内カメラが使えません。「カメラで撮る」をお使いください。');
+    return;
+  }
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } },
@@ -124,7 +139,7 @@ function reset() {
   el.textPanel.hidden = true;
   el.retake.hidden = true;
   el.hint.hidden = true;
-  setStatus('写真を用意すると、ここに進み具合が出ます。');
+  setStatus(defaultStatus());
 }
 
 /* ---------------- 認識とルビ付け ---------------- */
@@ -307,6 +322,12 @@ async function copyReadings() {
 
 /* ---------------- 表示のこまごま ---------------- */
 
+function defaultStatus() {
+  return liveCameraAvailable
+    ? '写真を用意すると、ここに進み具合が出ます。'
+    : '「カメラで撮る」で紙を撮ると、ここに進み具合が出ます。';
+}
+
 function setStatus(msg) {
   el.status.textContent = msg;
 }
@@ -321,6 +342,7 @@ function setProgress(v) {
   el.bar.style.width = `${Math.round(v * 100)}%`;
 }
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+// 1ファイル版には sw.js が付いてこないので、そのときは登録しない
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.__RUBYCAM_SINGLE_FILE__) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

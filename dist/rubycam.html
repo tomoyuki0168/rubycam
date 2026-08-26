@@ -1,0 +1,2637 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<title>ルビカメラ — 外国語の紙に発音ルビをふる</title>
+<meta name="description" content="外国語の紙をカメラで撮ると、発音のふりがなを付けて返します。">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ルビカメラ">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%0A%20%20%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%2296%22%20fill%3D%22%23101418%22%2F%3E%0A%20%20%3Crect%20x%3D%2272%22%20y%3D%22150%22%20width%3D%22368%22%20height%3D%22252%22%20rx%3D%2234%22%20fill%3D%22%231f2833%22%20stroke%3D%22%234da3ff%22%20stroke-width%3D%2214%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22256%22%20cy%3D%22286%22%20r%3D%2276%22%20fill%3D%22%23101418%22%20stroke%3D%22%234da3ff%22%20stroke-width%3D%2214%22%2F%3E%0A%20%20%3Ctext%20x%3D%22256%22%20y%3D%22312%22%20font-family%3D%22sans-serif%22%20font-size%3D%2272%22%20font-weight%3D%22700%22%20fill%3D%22%23ffd479%22%20text-anchor%3D%22middle%22%3EA%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22256%22%20y%3D%22128%22%20font-family%3D%22sans-serif%22%20font-size%3D%2262%22%20font-weight%3D%22700%22%20fill%3D%22%23ffd479%22%20text-anchor%3D%22middle%22%3E%E3%83%AB%E3%83%93%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A" type="image/svg+xml">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<style>
+:root {
+  --bg: #101418;
+  --panel: #171d23;
+  --line: #2a333c;
+  --fg: #e8eef4;
+  --muted: #93a3b1;
+  --accent: #4da3ff;
+  --accent-ink: #05121f;
+  --ruby: #ffd479;
+  --ruby-weak: #b8925a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  line-height: 1.6;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bar {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.bar h1 { margin: 0; font-size: 1.15rem; letter-spacing: 0.04em; }
+.tagline { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.8rem; }
+
+main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.stage {
+  position: relative;
+  container-type: inline-size;
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;
+}
+/* ルビの位置は写真の枠を基準に決めるので、写真は余白なく枠いっぱいに置く */
+.stage video, .stage img { display: none; width: 100%; height: auto; vertical-align: top; }
+.stage.live video { display: block; }
+.stage.shot img { display: block; }
+.stage.live .stage-empty, .stage.shot .stage-empty { display: none; }
+.stage-empty { color: var(--muted); font-size: 0.85rem; padding: 3.5rem 1rem; text-align: center; }
+
+.overlay { position: absolute; inset: 0; pointer-events: none; }
+.overlay .w {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  border-bottom: 2px solid rgba(77, 163, 255, 0.5);
+}
+.overlay .w b {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  padding: 0 0.15em;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--ruby);
+  text-shadow: 0 1px 2px #000, 0 0 6px #000;
+  line-height: 1.1;
+}
+/* 写真の上端に近い行は、ルビが枠外に出てしまうので下に回す */
+.overlay .w.below b { bottom: auto; top: 100%; }
+.overlay .w.weak b { color: var(--ruby-weak); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #1f2833;
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 0.65rem 0.95rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.ghost { background: transparent; }
+.btn.small { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+
+.settings { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; margin-top: 0.85rem; align-items: center; }
+.settings label { font-size: 0.8rem; color: var(--muted); display: grid; gap: 0.25rem; }
+.settings label.check { display: flex; align-items: center; gap: 0.4rem; }
+.settings select {
+  font: inherit;
+  font-size: 0.85rem;
+  background: #1f2833;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+}
+
+.status { margin: 0.85rem 0 0; font-size: 0.82rem; color: var(--muted); }
+.hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  background: #1d2a38;
+  border: 1px solid #2f4a66;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+.hint button { margin-left: 0.5rem; }
+
+.progress { height: 4px; background: #222c36; border-radius: 3px; overflow: hidden; margin-top: 0.6rem; }
+.progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.panel-head h2 { margin: 0; font-size: 0.95rem; }
+.panel-actions { display: flex; gap: 0.4rem; }
+
+.text-view { margin-top: 0.9rem; font-size: 1.15rem; }
+.text-view p { margin: 0 0 0.9rem; }
+.text-view ruby { cursor: pointer; }
+.text-view rt { font-size: 0.5em; color: var(--ruby); font-weight: 600; }
+.text-view ruby.weak rt { color: var(--ruby-weak); }
+.text-view ruby:hover { background: #223447; border-radius: 4px; }
+
+.note { color: var(--muted); font-size: 0.78rem; margin: 0.8rem 0 0; }
+.about h2 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.about ol { margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: var(--muted); }
+
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>ルビカメラ</h1>
+  <p class="tagline">外国語の紙を撮ると、読み方をふりがなで返します</p>
+</header>
+
+<main>
+  <section class="panel" id="capture-panel">
+    <div class="stage" id="stage">
+      <video id="preview" playsinline muted autoplay></video>
+      <img id="shot" alt="撮影した写真">
+      <div class="stage-empty" id="stage-empty">
+        <p>カメラを起動するか、写真を選んでください</p>
+      </div>
+      <div class="overlay" id="overlay" aria-hidden="true"></div>
+    </div>
+
+    <div class="controls" id="live-controls">
+      <button type="button" id="btn-camera" class="btn">カメラを起動</button>
+      <button type="button" id="btn-shutter" class="btn primary" disabled>撮影してルビをふる</button>
+    </div>
+
+    <div class="controls">
+      <label class="btn primary" for="file-camera">カメラで撮る
+        <input type="file" id="file-camera" accept="image/*" capture="environment" hidden>
+      </label>
+      <label class="btn ghost" for="file-album">アルバムから選ぶ
+        <input type="file" id="file-album" accept="image/*" hidden>
+      </label>
+      <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
+    </div>
+
+    <div class="settings">
+      <label>言語
+        <select id="lang"></select>
+      </label>
+      <label>ルビ
+        <select id="style">
+          <option value="kana">カタカナ</option>
+          <option value="roman">現地の読み（ローマ字・ピンイン）</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="toggle-overlay" checked> 写真にルビを重ねる</label>
+    </div>
+
+    <p class="status" id="status" role="status">写真を用意すると、ここに進み具合が出ます。</p>
+    <div class="progress" id="progress" hidden><span id="progress-bar"></span></div>
+    <p class="hint" id="hint" hidden></p>
+  </section>
+
+  <section class="panel" id="text-panel" hidden>
+    <div class="panel-head">
+      <h2>読み取った文章</h2>
+      <div class="panel-actions">
+        <button type="button" id="btn-speak" class="btn small">全文を読み上げる</button>
+        <button type="button" id="btn-copy" class="btn small ghost">読みをコピー</button>
+      </div>
+    </div>
+    <div id="text-view" class="text-view"></div>
+    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。</p>
+  </section>
+
+  <section class="panel about">
+    <h2>使い方</h2>
+    <ol>
+      <li>読みたい紙の言語を選ぶ（ラテン文字なら撮影後に自動で見分けて教えます）</li>
+      <li>カメラを起動して撮影、または撮影済みの写真を選ぶ</li>
+      <li>写真の上か、下の文章表示でふりがなを読む</li>
+    </ol>
+    <p class="note">文字認識と中国語のピンイン変換は、初回だけネットから辞書を取得します（以降は端末に残ります）。読みの生成そのものは端末内で完結し、写真がどこかに送られることはありません。</p>
+  </section>
+</main>
+
+<script>window.__RUBYCAM_SINGLE_FILE__ = true;</script>
+<script>
+(() => {
+  // src/lang/rules.js
+  function compile(rules5) {
+    return rules5.map(([pattern, out]) => {
+      if (pattern instanceof RegExp) {
+        const flags = pattern.flags.replace(/[gy]/g, "") + "y";
+        return { re: new RegExp(pattern.source, flags), out };
+      }
+      return { literal: pattern, out };
+    });
+  }
+  function transcribe(word, compiled, { fallback = "" } = {}) {
+    const w = word;
+    let i = 0;
+    let out = "";
+    while (i < w.length) {
+      let matched = null;
+      let len = 0;
+      for (const rule of compiled) {
+        if (rule.literal !== void 0) {
+          if (w.startsWith(rule.literal, i) && rule.literal.length > 0) {
+            matched = rule;
+            len = rule.literal.length;
+            break;
+          }
+        } else {
+          rule.re.lastIndex = i;
+          const m = rule.re.exec(w);
+          if (m && m.index === i) {
+            matched = rule;
+            len = m[0].length || 1;
+            matched._m = m;
+            break;
+          }
+        }
+      }
+      if (!matched) {
+        out += typeof fallback === "function" ? fallback(w[i]) : fallback;
+        i += 1;
+        continue;
+      }
+      const text = w.slice(i, i + len);
+      const ctx = {
+        word: w,
+        index: i,
+        before: w.slice(0, i),
+        after: w.slice(i + len),
+        atStart: i === 0,
+        atEnd: i + len >= w.length
+      };
+      out += typeof matched.out === "function" ? matched.out(text, ctx) : matched.out;
+      i += len;
+    }
+    return out;
+  }
+  function collapseDoubles(phonemes, keep = "") {
+    return phonemes.replace(
+      /(tS|dZ|ts|dz|[pbtdkgfvszSZTDxhmnlrRJN])\1/g,
+      (m, c) => keep.includes(c) ? m : c
+    );
+  }
+  function geminate(phonemes) {
+    return phonemes.replace(/(tS|dZ|ts|dz|[pbtdkgfvszSZTDxhlrR])\1/g, "Q$1");
+  }
+
+  // src/kana.js
+  var SYLL = {
+    "": ["ア", "イ", "ウ", "エ", "オ"],
+    p: ["パ", "ピ", "プ", "ペ", "ポ"],
+    b: ["バ", "ビ", "ブ", "ベ", "ボ"],
+    t: ["タ", "ティ", "トゥ", "テ", "ト"],
+    d: ["ダ", "ディ", "ドゥ", "デ", "ド"],
+    k: ["カ", "キ", "ク", "ケ", "コ"],
+    g: ["ガ", "ギ", "グ", "ゲ", "ゴ"],
+    f: ["ファ", "フィ", "フ", "フェ", "フォ"],
+    v: ["ヴァ", "ヴィ", "ヴ", "ヴェ", "ヴォ"],
+    s: ["サ", "シ", "ス", "セ", "ソ"],
+    z: ["ザ", "ジ", "ズ", "ゼ", "ゾ"],
+    S: ["シャ", "シ", "シュ", "シェ", "ショ"],
+    Z: ["ジャ", "ジ", "ジュ", "ジェ", "ジョ"],
+    T: ["サ", "シ", "ス", "セ", "ソ"],
+    D: ["ザ", "ジ", "ズ", "ゼ", "ゾ"],
+    x: ["ハ", "ヒ", "フ", "ヘ", "ホ"],
+    h: ["ハ", "ヒ", "フ", "ヘ", "ホ"],
+    ts: ["ツァ", "ツィ", "ツ", "ツェ", "ツォ"],
+    dz: ["ザ", "ジ", "ズ", "ゼ", "ゾ"],
+    tS: ["チャ", "チ", "チュ", "チェ", "チョ"],
+    dZ: ["ジャ", "ジ", "ジュ", "ジェ", "ジョ"],
+    m: ["マ", "ミ", "ム", "メ", "モ"],
+    n: ["ナ", "ニ", "ヌ", "ネ", "ノ"],
+    J: ["ニャ", "ニ", "ニュ", "ニェ", "ニョ"],
+    N: ["ンガ", "ンギ", "ング", "ンゲ", "ンゴ"],
+    l: ["ラ", "リ", "ル", "レ", "ロ"],
+    r: ["ラ", "リ", "ル", "レ", "ロ"],
+    R: ["ラ", "リ", "ル", "レ", "ロ"],
+    w: ["ワ", "ウィ", "ウ", "ウェ", "ウォ"],
+    y: ["ヤ", "イ", "ユ", "イェ", "ヨ"],
+    kw: ["クァ", "クィ", "ク", "クェ", "クォ"],
+    gw: ["グァ", "グィ", "グ", "グェ", "グォ"]
+  };
+  var YOUON = {
+    k: ["キャ", "キ", "キュ", "キェ", "キョ"],
+    g: ["ギャ", "ギ", "ギュ", "ギェ", "ギョ"],
+    s: ["シャ", "シ", "シュ", "シェ", "ショ"],
+    z: ["ジャ", "ジ", "ジュ", "ジェ", "ジョ"],
+    t: ["チャ", "チ", "チュ", "チェ", "チョ"],
+    d: ["ジャ", "ジ", "ジュ", "ジェ", "ジョ"],
+    n: ["ニャ", "ニ", "ニュ", "ニェ", "ニョ"],
+    h: ["ヒャ", "ヒ", "ヒュ", "ヒェ", "ヒョ"],
+    x: ["ヒャ", "ヒ", "ヒュ", "ヒェ", "ヒョ"],
+    b: ["ビャ", "ビ", "ビュ", "ビェ", "ビョ"],
+    p: ["ピャ", "ピ", "ピュ", "ピェ", "ピョ"],
+    m: ["ミャ", "ミ", "ミュ", "ミェ", "ミョ"],
+    r: ["リャ", "リ", "リュ", "リェ", "リョ"],
+    l: ["リャ", "リ", "リュ", "リェ", "リョ"],
+    R: ["リャ", "リ", "リュ", "リェ", "リョ"],
+    f: ["フャ", "フィ", "フュ", "フェ", "フョ"],
+    v: ["ヴャ", "ヴィ", "ヴュ", "ヴェ", "ヴョ"],
+    ts: ["チャ", "チ", "チュ", "チェ", "チョ"],
+    // もともと口蓋音の子音は y を吸収する（щ, ч などの転写で効く）
+    S: ["シャ", "シ", "シュ", "シェ", "ショ"],
+    Z: ["ジャ", "ジ", "ジュ", "ジェ", "ジョ"],
+    tS: ["チャ", "チ", "チュ", "チェ", "チョ"],
+    dZ: ["ジャ", "ジ", "ジュ", "ジェ", "ジョ"],
+    J: ["ニャ", "ニ", "ニュ", "ニェ", "ニョ"]
+  };
+  var CODA = {
+    p: "プ",
+    b: "ブ",
+    t: "ト",
+    d: "ド",
+    k: "ク",
+    g: "グ",
+    f: "フ",
+    v: "ヴ",
+    s: "ス",
+    z: "ズ",
+    S: "シュ",
+    Z: "ジュ",
+    T: "ス",
+    D: "ズ",
+    x: "フ",
+    h: "",
+    ts: "ツ",
+    dz: "ズ",
+    tS: "チ",
+    dZ: "ジ",
+    m: "ム",
+    n: "ン",
+    J: "ニ",
+    N: "ング",
+    l: "ル",
+    r: "ル",
+    R: "ル",
+    w: "ウ",
+    y: "イ",
+    kw: "ク",
+    gw: "グ"
+  };
+  var VOWEL_INDEX = {
+    a: 0,
+    i: 1,
+    u: 2,
+    e: 3,
+    o: 4,
+    A: 0,
+    // ae（cat の a）
+    "@": 0,
+    // 曖昧母音
+    V: 0,
+    // ʌ
+    O: 4,
+    // ɔ
+    U: 2,
+    // ʊ
+    I: 1
+    // ɪ
+  };
+  var CONSONANTS = Object.keys(SYLL).filter((c) => c !== "");
+  var TOKENS = [...CONSONANTS, ...Object.keys(VOWEL_INDEX), "Q", ":"].sort(
+    (a, b) => b.length - a.length
+  );
+  function tokenize(phonemes) {
+    const out = [];
+    let i = 0;
+    while (i < phonemes.length) {
+      const hit = TOKENS.find((t) => phonemes.startsWith(t, i));
+      if (hit) {
+        out.push(hit);
+        i += hit.length;
+      } else {
+        i += 1;
+      }
+    }
+    return out;
+  }
+  var isVowel = (t) => t !== void 0 && Object.hasOwn(VOWEL_INDEX, t);
+  var isConsonant = (t) => t !== void 0 && Object.hasOwn(SYLL, t) && t !== "";
+  function toKatakana(phonemes) {
+    const tok = tokenize(phonemes);
+    let out = "";
+    let i = 0;
+    const eatLong = () => {
+      while (tok[i] === ":") {
+        out += "ー";
+        i += 1;
+      }
+    };
+    while (i < tok.length) {
+      const t = tok[i];
+      if (t === "Q") {
+        out += "ッ";
+        i += 1;
+        continue;
+      }
+      if (t === ":") {
+        out += "ー";
+        i += 1;
+        continue;
+      }
+      if (isVowel(t)) {
+        out += SYLL[""][VOWEL_INDEX[t]];
+        i += 1;
+        eatLong();
+        continue;
+      }
+      if (!isConsonant(t)) {
+        i += 1;
+        continue;
+      }
+      const glide = (tok[i + 1] === "y" || tok[i + 1] === "w") && isVowel(tok[i + 2]) ? tok[i + 1] : null;
+      const vowel = glide ? tok[i + 2] : tok[i + 1];
+      if (isVowel(vowel)) {
+        const vi = VOWEL_INDEX[vowel];
+        let kana;
+        if (glide === "y" && YOUON[t]) {
+          kana = YOUON[t][vi];
+        } else if (glide === "w" && SYLL[t + "w"]) {
+          kana = SYLL[t + "w"][vi];
+        } else if (glide) {
+          kana = SYLL[t][glide === "w" ? 4 : 1] + SYLL[glide][vi];
+        } else {
+          kana = SYLL[t][vi];
+        }
+        out += kana;
+        i += glide ? 3 : 2;
+        eatLong();
+        continue;
+      }
+      if (t === "m" && ["p", "b", "m"].includes(tok[i + 1])) {
+        out += "ン";
+      } else if (t === "N") {
+        out += tok[i + 1] === void 0 ? "ング" : "ン";
+      } else {
+        out += CODA[t] ?? "";
+      }
+      i += 1;
+    }
+    return out;
+  }
+
+  // src/lang/en-dict.js
+  var EN_DICT = {
+    // 機能語
+    a: "ア",
+    an: "アン",
+    the: "ザ",
+    and: "アンド",
+    or: "オア",
+    but: "バット",
+    if: "イフ",
+    of: "オブ",
+    to: "トゥ",
+    in: "イン",
+    on: "オン",
+    at: "アット",
+    by: "バイ",
+    for: "フォー",
+    with: "ウィズ",
+    from: "フロム",
+    as: "アズ",
+    is: "イズ",
+    are: "アー",
+    was: "ワズ",
+    were: "ワー",
+    be: "ビー",
+    been: "ビーン",
+    am: "アム",
+    do: "ドゥー",
+    does: "ダズ",
+    did: "ディド",
+    done: "ダン",
+    have: "ハブ",
+    has: "ハズ",
+    had: "ハッド",
+    will: "ウィル",
+    would: "ウッド",
+    can: "キャン",
+    could: "クッド",
+    should: "シュッド",
+    may: "メイ",
+    might: "マイト",
+    must: "マスト",
+    not: "ノット",
+    no: "ノー",
+    yes: "イエス",
+    this: "ジス",
+    that: "ザット",
+    these: "ジーズ",
+    those: "ゾーズ",
+    there: "ゼア",
+    here: "ヒア",
+    i: "アイ",
+    you: "ユー",
+    he: "ヒー",
+    she: "シー",
+    it: "イット",
+    we: "ウィー",
+    they: "ゼイ",
+    me: "ミー",
+    him: "ヒム",
+    her: "ハー",
+    us: "アス",
+    them: "ゼム",
+    my: "マイ",
+    your: "ユア",
+    his: "ヒズ",
+    its: "イッツ",
+    our: "アワー",
+    their: "ゼア",
+    what: "ワット",
+    when: "ウェン",
+    where: "ウェア",
+    who: "フー",
+    why: "ワイ",
+    how: "ハウ",
+    which: "ウィッチ",
+    all: "オール",
+    any: "エニー",
+    some: "サム",
+    each: "イーチ",
+    every: "エブリー",
+    other: "アザー",
+    more: "モア",
+    most: "モースト",
+    than: "ザン",
+    then: "ゼン",
+    so: "ソー",
+    very: "ベリー",
+    just: "ジャスト",
+    only: "オンリー",
+    also: "オールソー",
+    about: "アバウト",
+    into: "イントゥ",
+    over: "オーバー",
+    under: "アンダー",
+    out: "アウト",
+    up: "アップ",
+    down: "ダウン",
+    before: "ビフォー",
+    after: "アフター",
+    during: "デュアリング",
+    between: "ビトウィーン",
+    because: "ビコーズ",
+    while: "ワイル",
+    both: "ボース",
+    such: "サッチ",
+    same: "セイム",
+    own: "オウン",
+    off: "オフ",
+    again: "アゲイン",
+    now: "ナウ",
+    new: "ニュー",
+    // 数
+    one: "ワン",
+    two: "トゥー",
+    three: "スリー",
+    four: "フォー",
+    five: "ファイブ",
+    six: "シックス",
+    seven: "セブン",
+    eight: "エイト",
+    nine: "ナイン",
+    ten: "テン",
+    eleven: "イレブン",
+    twelve: "トゥエルブ",
+    twenty: "トゥエンティ",
+    thirty: "サーティ",
+    hundred: "ハンドレッド",
+    thousand: "サウザンド",
+    million: "ミリオン",
+    first: "ファースト",
+    second: "セカンド",
+    third: "サード",
+    half: "ハーフ",
+    number: "ナンバー",
+    // 曜日・月・時
+    monday: "マンデー",
+    tuesday: "チューズデー",
+    wednesday: "ウェンズデー",
+    thursday: "サーズデー",
+    friday: "フライデー",
+    saturday: "サタデー",
+    sunday: "サンデー",
+    january: "ジャニュアリー",
+    february: "フェブラリー",
+    march: "マーチ",
+    april: "エイプリル",
+    june: "ジューン",
+    july: "ジュライ",
+    august: "オーガスト",
+    september: "セプテンバー",
+    october: "オクトーバー",
+    november: "ノベンバー",
+    december: "ディセンバー",
+    today: "トゥデイ",
+    tomorrow: "トゥモロー",
+    yesterday: "イエスタデー",
+    morning: "モーニング",
+    afternoon: "アフタヌーン",
+    evening: "イブニング",
+    night: "ナイト",
+    day: "デイ",
+    week: "ウィーク",
+    month: "マンス",
+    year: "イヤー",
+    time: "タイム",
+    hour: "アワー",
+    minute: "ミニット",
+    date: "デイト",
+    // 飲食・メニュー
+    water: "ウォーター",
+    coffee: "コーヒー",
+    tea: "ティー",
+    milk: "ミルク",
+    juice: "ジュース",
+    beer: "ビア",
+    wine: "ワイン",
+    bread: "ブレッド",
+    rice: "ライス",
+    soup: "スープ",
+    salad: "サラダ",
+    meat: "ミート",
+    beef: "ビーフ",
+    pork: "ポーク",
+    chicken: "チキン",
+    fish: "フィッシュ",
+    egg: "エッグ",
+    cheese: "チーズ",
+    butter: "バター",
+    sugar: "シュガー",
+    salt: "ソルト",
+    pepper: "ペッパー",
+    sauce: "ソース",
+    fruit: "フルーツ",
+    apple: "アップル",
+    orange: "オレンジ",
+    banana: "バナナ",
+    potato: "ポテト",
+    tomato: "トマト",
+    onion: "オニオン",
+    breakfast: "ブレックファスト",
+    lunch: "ランチ",
+    dinner: "ディナー",
+    menu: "メニュー",
+    order: "オーダー",
+    restaurant: "レストラン",
+    cafe: "カフェ",
+    bar: "バー",
+    hot: "ホット",
+    cold: "コールド",
+    sweet: "スイート",
+    spicy: "スパイシー",
+    fresh: "フレッシュ",
+    dessert: "デザート",
+    cake: "ケーキ",
+    ice: "アイス",
+    cream: "クリーム",
+    chocolate: "チョコレート",
+    // 旅行・掲示
+    exit: "エグジット",
+    entrance: "エントランス",
+    open: "オープン",
+    closed: "クローズド",
+    push: "プッシュ",
+    pull: "プル",
+    station: "ステーション",
+    airport: "エアポート",
+    train: "トレイン",
+    bus: "バス",
+    taxi: "タクシー",
+    ticket: "チケット",
+    platform: "プラットフォーム",
+    gate: "ゲート",
+    flight: "フライト",
+    baggage: "バゲッジ",
+    luggage: "ラゲッジ",
+    hotel: "ホテル",
+    room: "ルーム",
+    key: "キー",
+    floor: "フロア",
+    elevator: "エレベーター",
+    toilet: "トイレット",
+    restroom: "レストルーム",
+    danger: "デンジャー",
+    warning: "ワーニング",
+    caution: "コーション",
+    emergency: "エマージェンシー",
+    police: "ポリス",
+    hospital: "ホスピタル",
+    information: "インフォメーション",
+    reception: "レセプション",
+    check: "チェック",
+    free: "フリー",
+    price: "プライス",
+    sale: "セール",
+    discount: "ディスカウント",
+    cash: "キャッシュ",
+    card: "カード",
+    credit: "クレジット",
+    tax: "タックス",
+    street: "ストリート",
+    road: "ロード",
+    city: "シティ",
+    town: "タウン",
+    map: "マップ",
+    north: "ノース",
+    south: "サウス",
+    east: "イースト",
+    west: "ウェスト",
+    left: "レフト",
+    right: "ライト",
+    straight: "ストレート",
+    stop: "ストップ",
+    go: "ゴー",
+    wait: "ウェイト",
+    parking: "パーキング",
+    smoking: "スモーキング",
+    forbidden: "フォービドゥン",
+    allowed: "アラウド",
+    private: "プライベート",
+    public: "パブリック",
+    staff: "スタッフ",
+    welcome: "ウェルカム",
+    thank: "サンク",
+    thanks: "サンクス",
+    please: "プリーズ",
+    sorry: "ソーリー",
+    hello: "ハロー",
+    goodbye: "グッバイ",
+    excuse: "エクスキューズ",
+    // 書類・ビジネス
+    name: "ネーム",
+    address: "アドレス",
+    phone: "フォン",
+    email: "イーメール",
+    signature: "シグネチャー",
+    form: "フォーム",
+    page: "ページ",
+    document: "ドキュメント",
+    company: "カンパニー",
+    office: "オフィス",
+    business: "ビジネス",
+    service: "サービス",
+    customer: "カスタマー",
+    product: "プロダクト",
+    project: "プロジェクト",
+    report: "リポート",
+    meeting: "ミーティング",
+    contract: "コントラクト",
+    invoice: "インボイス",
+    payment: "ペイメント",
+    account: "アカウント",
+    bank: "バンク",
+    money: "マネー",
+    total: "トータル",
+    amount: "アマウント",
+    team: "チーム",
+    manager: "マネージャー",
+    director: "ディレクター",
+    president: "プレジデント",
+    employee: "エンプロイー",
+    member: "メンバー",
+    client: "クライアント",
+    market: "マーケット",
+    sales: "セールス",
+    cost: "コスト",
+    profit: "プロフィット",
+    budget: "バジェット",
+    data: "データ",
+    system: "システム",
+    computer: "コンピューター",
+    software: "ソフトウェア",
+    internet: "インターネット",
+    website: "ウェブサイト",
+    password: "パスワード",
+    file: "ファイル",
+    message: "メッセージ",
+    note: "ノート",
+    notice: "ノーティス",
+    terms: "タームズ",
+    condition: "コンディション",
+    policy: "ポリシー",
+    privacy: "プライバシー",
+    agreement: "アグリーメント",
+    security: "セキュリティ",
+    support: "サポート",
+    help: "ヘルプ",
+    // 動詞・形容詞
+    make: "メイク",
+    made: "メイド",
+    take: "テイク",
+    took: "トゥック",
+    get: "ゲット",
+    got: "ガット",
+    give: "ギブ",
+    gave: "ゲイブ",
+    come: "カム",
+    came: "ケイム",
+    know: "ノウ",
+    knew: "ニュー",
+    think: "シンク",
+    thought: "ソート",
+    see: "シー",
+    saw: "ソー",
+    say: "セイ",
+    said: "セッド",
+    want: "ウォント",
+    need: "ニード",
+    use: "ユーズ",
+    used: "ユーズド",
+    find: "ファインド",
+    found: "ファウンド",
+    work: "ワーク",
+    call: "コール",
+    try: "トライ",
+    ask: "アスク",
+    feel: "フィール",
+    become: "ビカム",
+    leave: "リーブ",
+    put: "プット",
+    mean: "ミーン",
+    keep: "キープ",
+    let: "レット",
+    begin: "ビギン",
+    seem: "シーム",
+    talk: "トーク",
+    turn: "ターン",
+    start: "スタート",
+    show: "ショー",
+    hear: "ヒア",
+    play: "プレイ",
+    run: "ラン",
+    move: "ムーブ",
+    live: "リブ",
+    believe: "ビリーブ",
+    bring: "ブリング",
+    happen: "ハプン",
+    write: "ライト",
+    read: "リード",
+    send: "センド",
+    build: "ビルド",
+    stay: "ステイ",
+    fall: "フォール",
+    cut: "カット",
+    reach: "リーチ",
+    kill: "キル",
+    remain: "リメイン",
+    good: "グッド",
+    great: "グレート",
+    bad: "バッド",
+    big: "ビッグ",
+    small: "スモール",
+    large: "ラージ",
+    long: "ロング",
+    short: "ショート",
+    high: "ハイ",
+    low: "ロー",
+    old: "オールド",
+    young: "ヤング",
+    early: "アーリー",
+    late: "レイト",
+    easy: "イージー",
+    hard: "ハード",
+    important: "インポータント",
+    different: "ディファレント",
+    possible: "ポッシブル",
+    available: "アベイラブル",
+    necessary: "ネセサリー",
+    special: "スペシャル",
+    local: "ローカル",
+    national: "ナショナル",
+    international: "インターナショナル",
+    general: "ジェネラル",
+    full: "フル",
+    empty: "エンプティ",
+    clean: "クリーン",
+    safe: "セーフ",
+    sure: "シュア",
+    ready: "レディ",
+    happy: "ハッピー",
+    beautiful: "ビューティフル",
+    nice: "ナイス",
+    best: "ベスト",
+    better: "ベター",
+    last: "ラスト",
+    next: "ネクスト",
+    many: "メニー",
+    much: "マッチ",
+    few: "フュー",
+    little: "リトル",
+    people: "ピープル",
+    person: "パーソン",
+    man: "マン",
+    woman: "ウーマン",
+    child: "チャイルド",
+    children: "チルドレン",
+    world: "ワールド",
+    life: "ライフ",
+    hand: "ハンド",
+    place: "プレイス",
+    case: "ケース",
+    part: "パート",
+    group: "グループ",
+    problem: "プロブレム",
+    fact: "ファクト",
+    point: "ポイント",
+    government: "ガバメント",
+    school: "スクール",
+    student: "ステューデント",
+    teacher: "ティーチャー",
+    book: "ブック",
+    word: "ワード",
+    line: "ライン",
+    level: "レベル",
+    area: "エリア",
+    country: "カントリー",
+    state: "ステート",
+    house: "ハウス",
+    home: "ホーム",
+    car: "カー",
+    door: "ドア",
+    window: "ウィンドウ",
+    table: "テーブル",
+    light: "ライト",
+    power: "パワー",
+    energy: "エナジー",
+    health: "ヘルス",
+    food: "フード",
+    color: "カラー",
+    size: "サイズ",
+    type: "タイプ",
+    kind: "カインド",
+    way: "ウェイ",
+    thing: "シング",
+    walk: "ウォーク",
+    require: "リクワイア",
+    print: "プリント",
+    music: "ミュージック",
+    basic: "ベーシック",
+    cat: "キャット",
+    vegetable: "ベジタブル",
+    knowledge: "ナレッジ",
+    arrival: "アライバル",
+    departure: "デパーチャー",
+    delicious: "デリシャス",
+    berry: "ベリー",
+    strawberry: "ストロベリー",
+    quick: "クイック",
+    slow: "スロー",
+    minimum: "ミニマム",
+    maximum: "マキシマム",
+    average: "アベレージ",
+    quality: "クオリティ",
+    quantity: "クオンティティ",
+    example: "イグザンプル",
+    question: "クエスチョン",
+    answer: "アンサー",
+    reason: "リーズン",
+    result: "リザルト",
+    change: "チェンジ",
+    choose: "チューズ",
+    enough: "イナフ",
+    through: "スルー",
+    though: "ゾウ",
+    weight: "ウェイト",
+    height: "ハイト",
+    measure: "メジャー",
+    island: "アイランド",
+    language: "ランゲージ",
+    foreign: "フォーリン",
+    translate: "トランスレート",
+    something: "サムシング",
+    anything: "エニシング",
+    nothing: "ナッシング",
+    everything: "エブリシング"
+  };
+
+  // src/lang/en.js
+  var longU = (before) => /[slrjtdnzSZ]$/.test(before) ? "u:" : "yu:";
+  var rules = compile([
+    // 接尾辞（位置が語末に来たときだけ当たる）
+    [/ation$/, "e:Son"],
+    [/tion$/, "Son"],
+    [/sion$/, "Zon"],
+    [/[ct]ious$/, "Sas"],
+    [/ious$/, "ias"],
+    [/ous$/, "as"],
+    [/erence$/, "arans"],
+    [/[ae]nce$/, "ans"],
+    [/ture$/, "tSa:"],
+    [/eipt$/, "i:t"],
+    [/ough$/, "o:"],
+    [/ight$/, "ait"],
+    [/ing$/, "iN"],
+    [/ed$/, (t, c) => {
+      if (/[td]$/.test(c.before)) return "eQd";
+      return /[ptkfsx]$|sh$|ch$/.test(c.before) ? "t" : "d";
+    }],
+    [/dge$/, "dZ"],
+    [/able$/, "abol"],
+    [/tle$/, "tol"],
+    [/([bcdfgklmnprstvz])le$/, (t) => t[0].replace("c", "k") + "ol"],
+    [/ce$/, "s"],
+    [/ge$/, "dZ"],
+    [/ly$/, "li:"],
+    [/y$/, "i:"],
+    [/e$/, ""],
+    // 二重字
+    ["tch", "tS"],
+    ["sch", "sk"],
+    ["sh", "S"],
+    ["ch", "tS"],
+    ["ph", "f"],
+    ["th", "T"],
+    ["wh", "w"],
+    ["ck", "k"],
+    ["ng", "N"],
+    ["qu", "kw"],
+    [/^kn/, "n"],
+    [/^wr/, "r"],
+    [/^ps/, "s"],
+    ["gh", ""],
+    ["alk", "o:k"],
+    [/(?<=c)ei/, "i:"],
+    // r 音つき母音
+    ["ear", "ia"],
+    ["air", "ea"],
+    ["are", "ea"],
+    ["ore", "o:"],
+    ["ar", "a:"],
+    ["er", "a:"],
+    ["ir", "a:"],
+    ["ur", "a:"],
+    ["or", "o:"],
+    // 母音字の組み合わせ
+    ["eau", "ou"],
+    ["ee", "i:"],
+    ["ea", "i:"],
+    ["oo", "u:"],
+    ["ou", "au"],
+    ["ow", "au"],
+    ["oa", "ou"],
+    ["ai", "ei"],
+    ["ay", "ei"],
+    ["ey", "ei"],
+    ["oi", "oi"],
+    ["oy", "oi"],
+    ["au", "o:"],
+    ["aw", "o:"],
+    ["ew", (t, c) => longU(c.before)],
+    ["ie", "i:"],
+    ["ui", "u:"],
+    // 語末が「子音 + e」なら直前の母音は長い（magic e）
+    [/a(?=[^aeiou]e$)/, "ei"],
+    [/e(?=[^aeiou]e$)/, "i:"],
+    [/i(?=[^aeiou]e$)/, "ai"],
+    [/o(?=[^aeiou]e$)/, "ou"],
+    [/u(?=[^aeiou]e$)/, (t, c) => longU(c.before)],
+    [/u(?=[^aeiou][aeiouy])/, (t, c) => longU(c.before)],
+    [/cc(?=[eiy])/, "ks"],
+    ["gg", "gg"],
+    ["cc", "kk"],
+    [/wa(?=[tsn])/, "wo"],
+    [/c(?=[eiy])/, "s"],
+    ["c", "k"],
+    [/g(?=[eiy])/, "dZ"],
+    ["g", "g"],
+    ["j", "dZ"],
+    ["x", "ks"],
+    [/y(?=[aeiou])/, "y"],
+    ["y", "i"],
+    ["a", "a"],
+    ["e", "e"],
+    ["i", "i"],
+    ["o", "o"],
+    ["u", "a"],
+    ["b", "b"],
+    ["d", "d"],
+    ["f", "f"],
+    ["h", "h"],
+    ["k", "k"],
+    ["l", "l"],
+    ["m", "m"],
+    ["n", "n"],
+    ["p", "p"],
+    ["r", "r"],
+    ["s", "s"],
+    ["t", "t"],
+    ["v", "b"],
+    ["w", "w"],
+    ["z", "z"]
+  ]);
+  var INFLECTIONS = [
+    ["ies", (s) => `${s.slice(0, -3)}y`, "ズ"],
+    ["es", (s) => s.slice(0, -2), "ズ"],
+    ["s", (s) => s.slice(0, -1), "ズ"],
+    ["ing", (s) => s.slice(0, -3), "イング"],
+    ["ing", (s) => `${s.slice(0, -3)}e`, "イング"],
+    ["ed", (s) => s.slice(0, -1), "ド"],
+    ["ed", (s) => s.slice(0, -2), "ド"],
+    ["ly", (s) => s.slice(0, -2), "リー"],
+    ["'s", (s) => s.slice(0, -2), "ズ"]
+  ];
+  var PLURAL_MERGE = { ト: "ツ", ド: "ズ", ク: "クス", プ: "プス", フ: "フス", ッ: "ツ" };
+  var PAST_MERGE = { ト: "テッド", ド: "デッド" };
+  var VOICELESS_TAIL = /[クプフスツチ]$|[シ][ュ]$/;
+  function joinSuffix(kana, tail) {
+    if (tail === "ズ") {
+      const merged = PLURAL_MERGE[kana.slice(-1)];
+      return merged ? kana.slice(0, -1) + merged : kana + tail;
+    }
+    if (tail === "ド") {
+      const merged = PAST_MERGE[kana.slice(-1)];
+      if (merged) return kana.slice(0, -1) + merged;
+      return VOICELESS_TAIL.test(kana) ? `${kana}ト` : kana + tail;
+    }
+    return kana + tail;
+  }
+  function estimate(word) {
+    const doubledBeforeSuffix = /([bcdfgkpt])\1(ed|ing|er|est|y)$/.test(word);
+    const raw = transcribe(word, rules);
+    let ph = doubledBeforeSuffix ? geminate(raw) : collapseDoubles(raw);
+    ph = ph.replace(/([aiueo])(p|t|k|b|d|g|tS|S)(?=[tds]?$)/, "$1Q$2");
+    return toKatakana(ph);
+  }
+  var en_default = {
+    code: "en",
+    label: "英語",
+    ocr: "eng",
+    speech: "en-US",
+    script: "latin",
+    read(word) {
+      const w = word.toLowerCase().replace(/[^a-z']/g, "");
+      if (!w) return { kana: "", confident: true };
+      if (EN_DICT[w]) return { kana: EN_DICT[w], confident: true };
+      for (const [suffix, stem, tail] of INFLECTIONS) {
+        if (!w.endsWith(suffix) || w.length <= suffix.length + 1) continue;
+        const base = stem(w);
+        if (EN_DICT[base]) return { kana: joinSuffix(EN_DICT[base], tail), confident: true };
+      }
+      for (const [suffix, stem, tail] of INFLECTIONS) {
+        if (suffix !== "s" && suffix !== "es") continue;
+        if (!w.endsWith(suffix) || w.length < suffix.length + 3) continue;
+        const base = stem(w);
+        const t = suffix === "es" && /(s|x|z|ch|sh)$/.test(base) ? "ィズ" : tail;
+        return { kana: joinSuffix(estimate(base), t), confident: false };
+      }
+      return { kana: estimate(w), confident: false };
+    }
+  };
+
+  // src/lang/zh.js
+  var PINYIN_CDN = "https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/+esm";
+  var pinyinFn = null;
+  var loadError = null;
+  async function prepare() {
+    if (pinyinFn || loadError) return;
+    try {
+      const mod = await import(
+        /* @vite-ignore */
+        PINYIN_CDN
+      );
+      pinyinFn = mod.pinyin;
+    } catch (e) {
+      loadError = e;
+    }
+  }
+  function isReady() {
+    return Boolean(pinyinFn);
+  }
+  var TONE_LETTERS = {
+    ā: "a",
+    á: "a",
+    ǎ: "a",
+    à: "a",
+    ē: "e",
+    é: "e",
+    ě: "e",
+    è: "e",
+    ī: "i",
+    í: "i",
+    ǐ: "i",
+    ì: "i",
+    ō: "o",
+    ó: "o",
+    ǒ: "o",
+    ò: "o",
+    ū: "u",
+    ú: "u",
+    ǔ: "u",
+    ù: "u",
+    ǖ: "v",
+    ǘ: "v",
+    ǚ: "v",
+    ǜ: "v",
+    ü: "v"
+  };
+  function stripTone(py) {
+    return [...py.toLowerCase()].map((c) => TONE_LETTERS[c] ?? c).join("");
+  }
+  var INITIALS = [
+    ["zh", "dZ"],
+    ["ch", "tS"],
+    ["sh", "S"],
+    ["b", "b"],
+    ["p", "p"],
+    ["m", "m"],
+    ["f", "f"],
+    ["d", "d"],
+    ["t", "t"],
+    ["n", "n"],
+    ["l", "l"],
+    ["g", "g"],
+    ["k", "k"],
+    ["h", "h"],
+    ["j", "dZ"],
+    ["q", "tS"],
+    ["x", "S"],
+    ["r", "r"],
+    ["z", "ts"],
+    ["c", "ts"],
+    ["s", "s"],
+    ["y", "y"],
+    ["w", "w"]
+  ];
+  var FINALS = {
+    a: "a",
+    o: "o",
+    e: "u:",
+    ê: "e",
+    er: "a:",
+    ai: "ai",
+    ei: "ei",
+    ao: "ao",
+    ou: "ou",
+    an: "an",
+    en: "en",
+    ang: "aN",
+    eng: "oN",
+    ong: "oN",
+    i: "i:",
+    ia: "ia",
+    ie: "ie",
+    iao: "iao",
+    iu: "iu",
+    iou: "iou",
+    ian: "ien",
+    in: "in",
+    iang: "iaN",
+    ing: "iN",
+    iong: "ioN",
+    u: "u:",
+    ua: "ua",
+    uo: "uo",
+    uai: "uai",
+    ui: "ui",
+    uei: "uei",
+    uan: "uan",
+    un: "uen",
+    uen: "uen",
+    uang: "uaN",
+    ueng: "ueN",
+    v: "yu:",
+    ve: "yue",
+    van: "yuen",
+    vn: "yun"
+  };
+  var APICAL = { zh: "dZi:", ch: "tSi:", sh: "Si:", r: "ri:", z: "tsu:", c: "tsu:", s: "su:" };
+  function pinyinToKatakana(syllable) {
+    const py = stripTone(syllable).replace(/[0-9]/g, "");
+    if (!py) return "";
+    const initial = INITIALS.find(([sp]) => py.startsWith(sp));
+    const head = initial ? initial[0] : "";
+    let rest = py.slice(head.length);
+    if (rest === "i" && APICAL[head]) return toKatakana(APICAL[head]);
+    if (head === "y") {
+      if (rest === "i") rest = "i";
+      else if (rest === "e") rest = "ie";
+      else if (rest.startsWith("u")) rest = `v${rest.slice(1)}`;
+      else rest = `i${rest}`;
+    } else if (head === "w") {
+      rest = rest === "u" ? "u" : `u${rest}`;
+    }
+    const final = FINALS[rest];
+    if (final === void 0) return toKatakana((initial?.[1] ?? "") + rest);
+    const onset = initial ? initial[1] : "";
+    const body = head === "y" || head === "w" ? final : onset + final;
+    return toKatakana(body).replace(/ング$/, "ン");
+  }
+  var zh_default = {
+    code: "zh",
+    label: "中国語",
+    ocr: "chi_sim",
+    speech: "zh-CN",
+    script: "han",
+    prepare,
+    isReady,
+    rubyStyles: ["pinyin", "kana"],
+    read(text, { style = "pinyin" } = {}) {
+      if (!pinyinFn) return { kana: "", roman: "", unavailable: true };
+      const roman = pinyinFn(text, { toneType: "symbol", type: "string" });
+      const kana = roman.split(/\s+/).filter(Boolean).map(pinyinToKatakana).join("");
+      return { kana, roman, ruby: style === "kana" ? kana : roman };
+    }
+  };
+
+  // src/lang/ko.js
+  var BASE = 44032;
+  var LAST = 55203;
+  var ONSET = ["g", "gg", "n", "d", "dd", "r", "m", "b", "bb", "s", "ss", "", "j", "jj", "ch", "k", "t", "p", "h"];
+  var NUCLEUS = ["a", "ae", "ya", "yae", "eo", "e", "yeo", "ye", "o", "wa", "wae", "oe", "yo", "u", "wo", "we", "wi", "yu", "eu", "ui", "i"];
+  var CODA2 = ["", "g", "gg", "gs", "n", "nj", "nh", "d", "l", "lg", "lm", "lb", "ls", "lt", "lp", "lh", "m", "b", "bs", "s", "ss", "ng", "j", "ch", "k", "t", "p", "h"];
+  var CODA_REPRESENTATIVE = {
+    "": "",
+    g: "g",
+    gg: "g",
+    gs: "g",
+    n: "n",
+    nj: "n",
+    nh: "n",
+    d: "d",
+    l: "l",
+    lg: "g",
+    lm: "m",
+    lb: "l",
+    ls: "l",
+    lt: "l",
+    lp: "p",
+    lh: "l",
+    m: "m",
+    b: "b",
+    bs: "b",
+    s: "d",
+    ss: "d",
+    ng: "ng",
+    j: "d",
+    ch: "d",
+    k: "g",
+    t: "d",
+    p: "b",
+    h: "d"
+  };
+  var CODA_SPLIT = {
+    gs: ["g", "s"],
+    nj: ["n", "j"],
+    lg: ["l", "g"],
+    lm: ["l", "m"],
+    lb: ["l", "b"],
+    ls: ["l", "s"],
+    lt: ["l", "t"],
+    lp: ["l", "p"],
+    bs: ["b", "s"]
+  };
+  var ASPIRATE = { g: "k", d: "t", b: "p", j: "ch" };
+  function decompose(text) {
+    const out = [];
+    for (const ch of text) {
+      const code = ch.codePointAt(0);
+      if (code >= BASE && code <= LAST) {
+        const n = code - BASE;
+        out.push({
+          onset: ONSET[Math.floor(n / 588)],
+          nucleus: NUCLEUS[Math.floor(n % 588 / 28)],
+          coda: CODA2[n % 28],
+          char: ch
+        });
+      } else {
+        out.push({ literal: ch });
+      }
+    }
+    return out;
+  }
+  function applySandhi(syllables) {
+    const s = syllables.map((x) => ({ ...x }));
+    for (let i = 0; i < s.length; i += 1) {
+      const cur = s[i];
+      const next = s[i + 1];
+      if (cur.literal || !cur.coda) continue;
+      if (!next || next.literal) {
+        cur.coda = CODA_REPRESENTATIVE[cur.coda];
+        continue;
+      }
+      if (next.onset === "") {
+        const split = CODA_SPLIT[cur.coda];
+        if (split) {
+          [cur.coda, next.onset] = split;
+        } else if (cur.coda === "ng") {
+        } else if (cur.coda === "h") {
+          cur.coda = "";
+        } else {
+          next.onset = cur.coda;
+          cur.coda = "";
+        }
+        continue;
+      }
+      if (cur.coda === "h" && ASPIRATE[next.onset]) {
+        next.onset = ASPIRATE[next.onset];
+        cur.coda = "";
+        continue;
+      }
+      if (cur.coda === "lh" && ASPIRATE[next.onset]) {
+        next.onset = ASPIRATE[next.onset];
+        cur.coda = "l";
+        continue;
+      }
+      const rep0 = CODA_REPRESENTATIVE[cur.coda];
+      if (next.onset === "h" && ASPIRATE[rep0]) {
+        next.onset = ASPIRATE[rep0];
+        cur.coda = "";
+        continue;
+      }
+      let rep = rep0;
+      if (["n", "m"].includes(next.onset)) {
+        if (rep === "g") rep = "ng";
+        else if (rep === "d") rep = "n";
+        else if (rep === "b") rep = "m";
+      }
+      if (next.onset === "r") {
+        if (rep === "l") next.onset = "l";
+        else if (["n"].includes(rep)) {
+          rep = "l";
+          next.onset = "l";
+        } else if (["g", "ng"].includes(rep)) {
+          rep = "ng";
+          next.onset = "n";
+        } else if (["d", "b", "m"].includes(rep)) next.onset = "n";
+      }
+      if (rep === "l" && next.onset === "n") next.onset = "l";
+      if (rep === "n" && next.onset === "l") rep = "l";
+      if (["g", "d", "b"].includes(rep)) {
+        const TENSE = { g: "gg", d: "dd", b: "bb", s: "ss", j: "jj" };
+        if (TENSE[next.onset]) next.onset = TENSE[next.onset];
+      }
+      cur.coda = rep;
+    }
+    return s;
+  }
+  var ONSET_PHONEME = {
+    g: ["k", "g"],
+    gg: ["Qk", "Qk"],
+    n: ["n", "n"],
+    d: ["t", "d"],
+    dd: ["Qt", "Qt"],
+    r: ["r", "r"],
+    l: ["r", "r"],
+    m: ["m", "m"],
+    b: ["p", "b"],
+    bb: ["Qp", "Qp"],
+    s: ["s", "s"],
+    ss: ["Qs", "Qs"],
+    "": ["", ""],
+    j: ["tS", "dZ"],
+    jj: ["QtS", "QtS"],
+    ch: ["tS", "tS"],
+    k: ["k", "k"],
+    t: ["t", "t"],
+    p: ["p", "p"],
+    h: ["h", "h"]
+  };
+  var NUCLEUS_PHONEME = {
+    a: "a",
+    ae: "e",
+    ya: "ya",
+    yae: "ye",
+    eo: "o",
+    e: "e",
+    yeo: "yo",
+    ye: "ye",
+    o: "o",
+    wa: "wa",
+    wae: "we",
+    oe: "we",
+    yo: "yo",
+    u: "u",
+    wo: "wo",
+    we: "we",
+    wi: "wi",
+    yu: "yu",
+    eu: "u",
+    ui: "wi",
+    i: "i"
+  };
+  var CODA_KANA = { "": "", g: "ク", n: "ン", d: "ッ", l: "ル", m: "ム", b: "プ", ng: "ン", p: "プ", s: "ッ", t: "ッ", k: "ク", h: "ッ" };
+  var ROMAN_ONSET = { g: "g", gg: "kk", n: "n", d: "d", dd: "tt", r: "r", l: "l", m: "m", b: "b", bb: "pp", s: "s", ss: "ss", "": "", j: "j", jj: "jj", ch: "ch", k: "k", t: "t", p: "p", h: "h" };
+  var ROMAN_CODA = { "": "", g: "k", n: "n", d: "t", l: "l", m: "m", b: "p", ng: "ng", p: "p", s: "t", t: "t", k: "k", h: "t" };
+  var ko_default = {
+    code: "ko",
+    label: "韓国語",
+    ocr: "kor",
+    speech: "ko-KR",
+    script: "hangul",
+    read(word) {
+      const syls = applySandhi(decompose(word));
+      let kana = "";
+      let roman = "";
+      syls.forEach((s, i) => {
+        if (s.literal) {
+          kana += s.literal;
+          roman += s.literal;
+          return;
+        }
+        const initial = i === 0;
+        const onset = ONSET_PHONEME[s.onset]?.[initial ? 0 : 1] ?? "";
+        const nucleus = NUCLEUS_PHONEME[s.nucleus] ?? "a";
+        const nextOnset = syls[i + 1] && !syls[i + 1].literal ? ONSET_PHONEME[syls[i + 1].onset]?.[1] ?? "" : "";
+        const swallowCoda = nextOnset.startsWith("Q") && ["g", "d", "b", "p", "k", "t", "s"].includes(s.coda);
+        kana += toKatakana(onset + nucleus) + (swallowCoda ? "" : CODA_KANA[s.coda] ?? "");
+        roman += (ROMAN_ONSET[s.onset] ?? "") + s.nucleus + (swallowCoda ? "" : ROMAN_CODA[s.coda] ?? "");
+      });
+      kana = kana.replace(/ッ$/, "");
+      return { kana, roman };
+    }
+  };
+
+  // src/lang/vi.js
+  var TONE_MARKS = /[̣̀́̃̉]/g;
+  var TONE_NAME = {
+    "̀": "huyền",
+    "́": "sắc",
+    "̃": "ngã",
+    "̉": "hỏi",
+    "̣": "nặng"
+  };
+  function stripTone2(word) {
+    return word.normalize("NFD").replace(TONE_MARKS, "").normalize("NFC");
+  }
+  function toneOf(word) {
+    const d = word.normalize("NFD");
+    for (const ch of d) if (TONE_NAME[ch]) return TONE_NAME[ch];
+    return "ngang";
+  }
+  var rules2 = compile([
+    // 頭子音（長いものから）
+    [/^ngh/, "N"],
+    [/^ng/, "N"],
+    [/^nh/, "J"],
+    [/^ch/, "tS"],
+    [/^tr/, "tS"],
+    [/^th/, "t"],
+    [/^ph/, "f"],
+    [/^kh/, "k"],
+    [/^gh/, "g"],
+    [/^gi(?=[aăâeêioôơuưy])/, "z"],
+    [/^gi/, "zi"],
+    [/^qu/, "ku"],
+    [/^đ/, "d"],
+    [/^d/, "z"],
+    [/^r/, "r"],
+    [/^x/, "s"],
+    [/^s/, "s"],
+    [/^v/, "b"],
+    [/^[ck]/, "k"],
+    // 末子音を含むまとまり
+    [/anh$/, "ain"],
+    [/ach$/, "aik"],
+    [/inh$/, "in"],
+    [/ênh$/, "en"],
+    [/nh$/, "n"],
+    [/ng$/, "n"],
+    [/ch$/, "k"],
+    [/c$/, "k"],
+    // 母音の連なり
+    ["ươ", "uo"],
+    ["uô", "uo"],
+    ["ưa", "ua"],
+    ["iê", "ie"],
+    ["yê", "ie"],
+    ["ây", "ai"],
+    ["ay", "ai"],
+    ["ai", "ai"],
+    ["ao", "ao"],
+    ["âu", "au"],
+    ["au", "au"],
+    ["eo", "eo"],
+    ["êu", "eu"],
+    ["ia", "ia"],
+    ["iu", "iu"],
+    ["oa", "oa"],
+    ["oe", "oe"],
+    ["oi", "oi"],
+    ["ôi", "oi"],
+    ["ơi", "oi"],
+    ["ua", "ua"],
+    ["uê", "ue"],
+    ["ui", "ui"],
+    ["uy", "ui"],
+    ["ưu", "uu"],
+    // 単母音
+    [/[aăâ]/, "a"],
+    [/[eê]/, "e"],
+    [/[iy]/, "i"],
+    [/[oôơ]/, "o"],
+    [/[uư]/, "u"],
+    // 残りの子音
+    ["b", "b"],
+    ["g", "g"],
+    ["h", "h"],
+    ["k", "k"],
+    ["l", "l"],
+    ["m", "m"],
+    ["n", "n"],
+    ["p", "p"],
+    ["t", "t"],
+    ["đ", "d"],
+    ["d", "z"],
+    ["v", "b"],
+    ["x", "s"],
+    ["s", "s"],
+    ["r", "r"],
+    ["c", "k"]
+  ]);
+  var vi_default = {
+    code: "vi",
+    label: "ベトナム語",
+    ocr: "vie",
+    speech: "vi-VN",
+    script: "latin",
+    // ベトナム語は音節ごとに空白で区切って書くので、単語ではなく音節単位で読む
+    read(word) {
+      const syllable = stripTone2(word).toLowerCase();
+      let ph = transcribe(syllable, rules2);
+      ph = ph.replace(/([aiueo])([ktp])$/, "$1Q$2");
+      return { kana: toKatakana(ph), tone: toneOf(word), phonemes: ph };
+    }
+  };
+
+  // src/lang/ru.js
+  var MAP = [
+    ["щ", "SitS", "shch"],
+    ["ж", "Z", "zh"],
+    ["ш", "S", "sh"],
+    ["ч", "tS", "ch"],
+    ["ц", "ts", "ts"],
+    ["х", "x", "kh"],
+    ["ю", "yu", "yu"],
+    ["я", "ya", "ya"],
+    ["ё", "yo", "yo"],
+    ["э", "e", "e"],
+    ["ы", "i", "y"],
+    ["й", "y", "y"],
+    ["а", "a", "a"],
+    ["б", "b", "b"],
+    ["в", "v", "v"],
+    ["г", "g", "g"],
+    ["д", "d", "d"],
+    ["е", "e", "e"],
+    ["з", "z", "z"],
+    ["и", "i", "i"],
+    ["к", "k", "k"],
+    ["л", "l", "l"],
+    ["м", "m", "m"],
+    ["н", "n", "n"],
+    ["о", "o", "o"],
+    ["п", "p", "p"],
+    ["р", "r", "r"],
+    ["с", "s", "s"],
+    ["т", "t", "t"],
+    ["у", "u", "u"],
+    ["ф", "f", "f"],
+    ["ь", "", "'"],
+    ["ъ", "", ""]
+  ];
+  var phonRules = compile([
+    ["ия", "ia"],
+    // 語頭・母音のあとの е は「イェ」
+    [/е/, (t, c) => c.atStart || /[аеёиоуыэюя]$/.test(c.before) ? "ye" : "e"],
+    // 軟音記号は直前の子音を口蓋化させる（ль → リ）
+    [/[бвгдзклмнпрстфх]ь/, (t) => phonemeOf(t[0]) + "yi"],
+    ...MAP.map(([ru, ph]) => [ru, ph])
+  ]);
+  var romanRules = compile(MAP.map(([ru, , tr]) => [ru, tr]));
+  function phonemeOf(ch) {
+    return MAP.find(([ru]) => ru === ch)?.[1] ?? "";
+  }
+  var ru_default = {
+    code: "ru",
+    label: "ロシア語",
+    ocr: "rus",
+    speech: "ru-RU",
+    script: "cyrillic",
+    read(word) {
+      const w = word.toLowerCase();
+      let ph = transcribe(w, phonRules);
+      ph = ph.replace(/yi(?=[aiueo])/g, "y");
+      ph = collapseDoubles(ph, "nm");
+      ph = ph.replace(/(b|d|g|v|z|Z)$/, (m) => ({ b: "p", d: "t", g: "k", v: "f", z: "s", Z: "S" })[m]);
+      return { kana: toKatakana(ph), roman: transcribe(w, romanRules), phonemes: ph };
+    }
+  };
+
+  // src/lang/el.js
+  var strip = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").normalize("NFC").toLowerCase();
+  var phonRules2 = compile([
+    ["μπ", "b"],
+    ["ντ", "d"],
+    ["γκ", "g"],
+    ["γγ", "Ng"],
+    ["τσ", "ts"],
+    ["τζ", "dz"],
+    [/αυ(?=[θκξπστφχψ])/, "af"],
+    ["αυ", "av"],
+    [/ευ(?=[θκξπστφχψ])/, "ef"],
+    ["ευ", "ev"],
+    ["ου", "u"],
+    ["αι", "e"],
+    ["ει", "i"],
+    ["οι", "i"],
+    ["υι", "i"],
+    ["α", "a"],
+    ["ε", "e"],
+    ["η", "i"],
+    ["ι", "i"],
+    ["ο", "o"],
+    ["ω", "o"],
+    ["υ", "i"],
+    ["β", "v"],
+    ["γ", "g"],
+    ["δ", "d"],
+    ["ζ", "z"],
+    ["θ", "T"],
+    ["κ", "k"],
+    ["λ", "l"],
+    ["μ", "m"],
+    ["ν", "n"],
+    ["ξ", "ks"],
+    ["π", "p"],
+    ["ρ", "r"],
+    ["σ", "s"],
+    ["ς", "s"],
+    ["τ", "t"],
+    ["φ", "f"],
+    ["χ", "x"],
+    ["ψ", "ps"]
+  ]);
+  var romanRules2 = compile([
+    ["μπ", "b"],
+    ["ντ", "d"],
+    ["γκ", "g"],
+    ["ου", "ou"],
+    ["αι", "ai"],
+    ["ει", "ei"],
+    ["α", "a"],
+    ["β", "v"],
+    ["γ", "g"],
+    ["δ", "d"],
+    ["ε", "e"],
+    ["ζ", "z"],
+    ["η", "i"],
+    ["θ", "th"],
+    ["ι", "i"],
+    ["κ", "k"],
+    ["λ", "l"],
+    ["μ", "m"],
+    ["ν", "n"],
+    ["ξ", "x"],
+    ["ο", "o"],
+    ["π", "p"],
+    ["ρ", "r"],
+    ["σ", "s"],
+    ["ς", "s"],
+    ["τ", "t"],
+    ["υ", "y"],
+    ["φ", "f"],
+    ["χ", "ch"],
+    ["ψ", "ps"],
+    ["ω", "o"]
+  ]);
+  var el_default = {
+    code: "el",
+    label: "ギリシャ語",
+    ocr: "ell",
+    speech: "el-GR",
+    script: "greek",
+    read(word) {
+      const w = strip(word);
+      const ph = collapseDoubles(transcribe(w, phonRules2));
+      return { kana: toKatakana(ph), roman: transcribe(w, romanRules2), phonemes: ph };
+    }
+  };
+
+  // src/lang/de.js
+  var BACK = /[aouäöü]/;
+  var rules3 = compile([
+    ["tsch", "tS"],
+    ["sch", "S"],
+    ["chs", "ks"],
+    ["ch", (t, c) => {
+      const prev = c.before.slice(-1);
+      if (BACK.test(prev)) return "x";
+      return /^[aeiouäöü]/.test(c.after) ? "h" : "hi";
+    }],
+    [/^sp/, "Sp"],
+    [/^st/, "St"],
+    [/^s(?=[aeiouäöü])/, "z"],
+    ["ß", "s"],
+    ["ph", "f"],
+    ["th", "t"],
+    ["pf", "pf"],
+    ["qu", "kv"],
+    [/ig$/, "ihi"],
+    [/er$/, "a:"],
+    ["ie", "i:"],
+    [/[ea]i/, "ai"],
+    [/[ea]y/, "ai"],
+    ["eu", "oi"],
+    ["äu", "oi"],
+    ["au", "au"],
+    ["aa", "a:"],
+    ["ee", "e:"],
+    ["oo", "o:"],
+    ["ah", "a:"],
+    ["eh", "e:"],
+    ["ih", "i:"],
+    ["oh", "o:"],
+    ["uh", "u:"],
+    ["äh", "e:"],
+    ["öh", "e:"],
+    ["üh", "yu:"],
+    ["ng", "N"],
+    ["nk", "Nk"],
+    ["v", "f"],
+    ["w", "v"],
+    ["z", "ts"],
+    ["j", "y"],
+    ["c", "k"],
+    ["ä", "e"],
+    ["ö", "e"],
+    ["ü", "yu"],
+    ["y", "yu"],
+    ["a", "a"],
+    ["e", "e"],
+    ["i", "i"],
+    ["o", "o"],
+    ["u", "u"],
+    ["b", "b"],
+    ["d", "d"],
+    ["f", "f"],
+    ["g", "g"],
+    ["h", "h"],
+    ["k", "k"],
+    ["l", "l"],
+    ["m", "m"],
+    ["n", "n"],
+    ["p", "p"],
+    ["r", "r"],
+    ["s", "s"],
+    ["t", "t"],
+    ["x", "ks"]
+  ]);
+  var UNSTRESSED_PREFIX = /^(be|ge|ver|zer|ent|emp|er)./;
+  function lengthenFirstSyllable(ph, word) {
+    if (UNSTRESSED_PREFIX.test(word)) return ph;
+    return ph.replace(
+      /^([^aiueo]*)([aiueo])(?!:)(tS|dZ|ts|dz|kw|gw|[pbtdkgfvszSZTDmnJNlrRwy])([aiueo]|$)/,
+      "$1$2:$3$4"
+    );
+  }
+  function devoiceFinal(ph) {
+    return ph.replace(/b$/, "p").replace(/d$/, "t").replace(/g$/, "k");
+  }
+  var de_default = {
+    code: "de",
+    label: "ドイツ語",
+    ocr: "deu",
+    speech: "de-DE",
+    script: "latin",
+    read(word) {
+      let ph = geminate(transcribe(word.toLowerCase(), rules3));
+      ph = lengthenFirstSyllable(ph, word.toLowerCase());
+      ph = devoiceFinal(ph);
+      ph = ph.replace(/x(?![aiueo:])/g, "xa");
+      ph = ph.replace(/tS(?![aiueo:])/g, "tSu");
+      return { kana: toKatakana(ph), phonemes: ph };
+    }
+  };
+
+  // src/lang/fr.js
+  var NOT_V = "(?![aeiouyâàêéèëîïôûùü])";
+  var NASAL_END = `${NOT_V}(?![nm])`;
+  var rules4 = compile([
+    // 語末の黙字（2文字以上の語のみ）
+    [/(?:ent|es|e|s|t|d|x|z|p|g)$/, (t, c) => c.index === 0 ? fallbackFinal(t) : ""],
+    ["œu", "u"],
+    ["oeu", "u"],
+    [/eaux?$/, "o:"],
+    ["eau", "o:"],
+    [/aill?e?$/, "ai"],
+    [/age$/, "a:Z"],
+    [/(?:ée|er|ez|é)$/, "e:"],
+    [new RegExp(`(?:ain|aim|ein|eim|yn|ym)${NASAL_END}`), "an"],
+    [new RegExp(`oin${NASAL_END}`), "wan"],
+    [new RegExp(`(?:an|am|en|em)${NASAL_END}`), "an"],
+    [new RegExp(`(?:on|om)${NASAL_END}`), "on"],
+    [new RegExp(`(?:un|um)${NASAL_END}`), "an"],
+    [new RegExp(`(?:in|im)${NASAL_END}`), "an"],
+    ["eur", "u:r"],
+    [/ou[psxtz]?$/, "u:"],
+    [/au[xspt]?$/, "o:"],
+    ["ou", "u"],
+    ["oi", "wa"],
+    ["au", "o"],
+    [/[ae]i/, "e"],
+    ["eu", "u"],
+    ["gn", "J"],
+    [/(?<=[aeiou])ill/, "y"],
+    ["ill", "il"],
+    [/(?<=[aeiou])il$/, "y"],
+    ["ch", "S"],
+    ["ph", "f"],
+    ["th", "t"],
+    ["qu", "k"],
+    ["ss", "s"],
+    [/(?<=[aeiouéèêâôû])s(?=[aeiouéèêâôû])/, "z"],
+    [/c(?=[eiyéè])/, "s"],
+    ["ç", "s"],
+    ["c", "k"],
+    [/g(?=[eiyéè])/, "Z"],
+    ["g", "g"],
+    ["j", "Z"],
+    ["h", ""],
+    [/[éèêë]/, "e"],
+    [/[âà]/, "a"],
+    [/[îï]/, "i"],
+    ["ô", "o"],
+    [/[ûù]/, "yu"],
+    ["u", "yu"],
+    ["y", "i"],
+    ["w", "v"],
+    ["x", "ks"],
+    ["a", "a"],
+    ["e", "e"],
+    ["i", "i"],
+    ["o", "o"],
+    ["b", "b"],
+    ["d", "d"],
+    ["f", "f"],
+    ["k", "k"],
+    ["l", "l"],
+    ["m", "m"],
+    ["n", "n"],
+    ["p", "p"],
+    ["r", "r"],
+    ["s", "s"],
+    ["t", "t"],
+    ["v", "v"],
+    ["z", "z"]
+  ]);
+  function fallbackFinal(t) {
+    return { ent: "an", es: "e", e: "e", s: "s", t: "t", d: "d", x: "ks", z: "z", p: "p", g: "g" }[t] ?? "";
+  }
+  var fr_default = {
+    code: "fr",
+    label: "フランス語",
+    ocr: "fra",
+    speech: "fr-FR",
+    script: "latin",
+    read(word) {
+      let ph = transcribe(word.toLowerCase(), rules4);
+      ph = ph.replace(/([aiueo])r$/, "$1:r");
+      return { kana: toKatakana(ph), phonemes: ph };
+    }
+  };
+
+  // src/lang/romance.js
+  var V = "[aeiouáéíóúàèìòùâêîôûäëïöüãõ]";
+  var esRules = compile([
+    ["ch", "tS"],
+    ["ll", "y"],
+    ["rr", "r"],
+    [new RegExp(`qu(?=[ei])`), "k"],
+    [new RegExp(`gu(?=[eiéí])`), "g"],
+    [/gü/, "gw"],
+    [/c(?=[eiéí])/, "s"],
+    ["c", "k"],
+    [/g(?=[eiéí])/, "x"],
+    ["g", "g"],
+    ["j", "x"],
+    ["h", ""],
+    ["ñ", "J"],
+    ["v", "b"],
+    ["z", "s"],
+    ["x", "ks"],
+    ["y", (t, c) => c.atEnd || !/^[aeiouáéíóú]/.test(c.after) ? "i" : "y"],
+    ["ü", "u"],
+    [/[aá]/, "a"],
+    [/[eé]/, "e"],
+    [/[ií]/, "i"],
+    [/[oó]/, "o"],
+    [/[uú]/, "u"],
+    ["b", "b"],
+    ["d", "d"],
+    ["f", "f"],
+    ["k", "k"],
+    ["l", "l"],
+    ["m", "m"],
+    ["n", "n"],
+    ["p", "p"],
+    ["q", "k"],
+    ["r", "r"],
+    ["s", "s"],
+    ["t", "t"],
+    ["w", "w"]
+  ]);
+  var itRules = compile([
+    ["gli", "li"],
+    ["gn", "J"],
+    [/sch(?=[eiéè])/, "sk"],
+    [/sc(?=[eiéè])/, "S"],
+    [/sci(?=[aou])/, "S"],
+    [/ci(?=[aouAOU])/, "tS"],
+    [/gi(?=[aou])/, "dZ"],
+    [/ch/, "k"],
+    [/gh/, "g"],
+    [/c(?=[eiéèíì])/, "tS"],
+    ["c", "k"],
+    [/g(?=[eiéèíì])/, "dZ"],
+    ["g", "g"],
+    ["h", ""],
+    ["z", "ts"],
+    ["qu", "kw"],
+    ["q", "k"],
+    [/[aà]/, "a"],
+    [/[eèé]/, "e"],
+    [/[iì]/, "i"],
+    [/[oòó]/, "o"],
+    [/[uù]/, "u"],
+    ["b", "b"],
+    ["d", "d"],
+    ["f", "f"],
+    ["j", "y"],
+    ["k", "k"],
+    ["l", "l"],
+    ["m", "m"],
+    ["n", "n"],
+    ["p", "p"],
+    ["r", "r"],
+    ["s", "s"],
+    ["t", "t"],
+    ["v", "v"],
+    ["w", "w"],
+    ["x", "ks"],
+    ["y", "y"]
+  ]);
+  var ptRules = compile([
+    ["ch", "S"],
+    ["lh", "ly"],
+    ["nh", "J"],
+    ["rr", "x"],
+    ["ss", "s"],
+    [/qu(?=[ei])/, "k"],
+    [/gu(?=[ei])/, "g"],
+    [/ão/, "aun"],
+    [/õe/, "oin"],
+    [/ãe/, "ain"],
+    [/c(?=[eií])/, "s"],
+    ["ç", "s"],
+    ["c", "k"],
+    [/g(?=[eií])/, "Z"],
+    ["g", "g"],
+    ["j", "Z"],
+    ["h", ""],
+    [/^r/, "x"],
+    ["r", "r"],
+    [/s(?=$)/, "s"],
+    [new RegExp(`s(?=${V})`), "s"],
+    ["s", "s"],
+    ["x", "S"],
+    ["z", "z"],
+    [/m(?=$)/, "n"],
+    [/[aáàâ]/, "a"],
+    ["ã", "an"],
+    [/[eéê]/, "e"],
+    [/[ií]/, "i"],
+    [/[oóô]/, "o"],
+    ["õ", "on"],
+    [/[uú]/, "u"],
+    ["b", "b"],
+    ["d", "d"],
+    ["f", "f"],
+    ["k", "k"],
+    ["l", "l"],
+    ["m", "m"],
+    ["n", "n"],
+    ["p", "p"],
+    ["q", "k"],
+    ["t", "t"],
+    ["v", "v"],
+    ["w", "w"],
+    ["y", "i"]
+  ]);
+  function makeLang({ code, label, ocr, speech, rules: rules5, gem = true }) {
+    return {
+      code,
+      label,
+      ocr,
+      speech,
+      script: "latin",
+      read(word) {
+        const w = word.toLowerCase();
+        let ph = transcribe(w, rules5);
+        if (gem) ph = geminate(ph);
+        return { kana: toKatakana(ph), phonemes: ph };
+      }
+    };
+  }
+  var es = makeLang({
+    code: "es",
+    label: "スペイン語",
+    ocr: "spa",
+    speech: "es-ES",
+    rules: esRules,
+    gem: false
+  });
+  var it = makeLang({
+    code: "it",
+    label: "イタリア語",
+    ocr: "ita",
+    speech: "it-IT",
+    rules: itRules
+  });
+  var pt = makeLang({
+    code: "pt",
+    label: "ポルトガル語",
+    ocr: "por",
+    speech: "pt-BR",
+    rules: ptRules,
+    gem: false
+  });
+
+  // src/lang/index.js
+  var LANGUAGES = [en_default, zh_default, ko_default, vi_default, es, fr_default, de_default, it, pt, ru_default, el_default];
+  var byCode = Object.fromEntries(LANGUAGES.map((l) => [l.code, l]));
+  function getLanguage(code) {
+    return byCode[code] ?? en_default;
+  }
+  var SCRIPT_TEST = [
+    ["ko", /[가-힣]/],
+    ["zh", /[一-鿿㐀-䶿]/],
+    ["ru", /[Ѐ-ӿ]/],
+    ["el", /[Ͱ-Ͽἀ-῿]/]
+  ];
+  var LATIN_HINTS = [
+    ["vi", /[ăâêôơưđ]|[aeiouy][̣̀́̃̉]/i, /\b(và|của|người|không|được|những|trong|với)\b/i],
+    ["de", /[äöüß]/i, /\b(der|die|das|und|ist|nicht|ein|eine|mit|sich|auf|für|dass)\b/i],
+    ["fr", /[çœàèùêâî]/i, /\b(le|la|les|des|une|est|et|pour|dans|avec|sur|vous|nous|que)\b/i],
+    ["es", /[ñ¿¡]/i, /\b(el|los|las|una|es|para|con|por|que|del|más|pero|como)\b/i],
+    ["pt", /[ãõ]|ção|ções|nh|lh/i, /\b(não|uma|são|os|as|seu|seus|sua|suas|você|muito|também|dos|das|obrigado|guarde)\b/i],
+    ["it", /\b(gli|degli|della|dello)\b/i, /\b(il|lo|la|di|che|per|con|non|sono|una|del|nel)\b/i],
+    ["en", /^$/, /\b(the|and|of|to|in|is|for|with|you|are|this|that|from|not)\b/i]
+  ];
+  function detectLanguage(text) {
+    const t = text.normalize("NFC");
+    for (const [code, re] of SCRIPT_TEST) {
+      if (re.test(t)) return code;
+    }
+    const lower = t.toLowerCase();
+    const scores = /* @__PURE__ */ new Map();
+    for (const [code, charRe, wordRe] of LATIN_HINTS) {
+      let score = 0;
+      if (charRe.source !== "^$") score += (t.match(new RegExp(charRe.source, "gi")) ?? []).length * 3;
+      score += (lower.match(new RegExp(wordRe.source, "gi")) ?? []).length;
+      if (score > 0) scores.set(code, score);
+    }
+    if (scores.size === 0) return "en";
+    return [...scores.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  }
+  function tokenize2(text, code) {
+    const perChar = code === "zh";
+    const tokens = [];
+    const re = perChar ? /([一-鿿㐀-䶿])|([^\s一-鿿㐀-䶿]+)|(\s+)/g : /([\p{L}\p{M}\p{N}''-]+)|([^\p{L}\p{M}\p{N}''-]+)/gu;
+    for (const m of text.matchAll(re)) {
+      const word = perChar ? m[1] ?? m[2] ?? null : m[1] ?? null;
+      tokens.push({ text: m[0], isWord: word !== null });
+    }
+    return tokens;
+  }
+
+  // src/ocr.js
+  var VERSION = "5.1.1";
+  var CORE_VERSION = "5.1.0";
+  var ORIGINS = [
+    "https://cdn.jsdelivr.net/npm",
+    "https://unpkg.com"
+  ];
+  var LANG_URL = "https://tessdata.projectnaptha.com/4.0.0";
+  var scriptPromise = null;
+  var activeOrigin = ORIGINS[0];
+  var workers = /* @__PURE__ */ new Map();
+  function loadOne(src) {
+    return new Promise((resolve, reject) => {
+      const el2 = document.createElement("script");
+      el2.src = src;
+      el2.onload = resolve;
+      el2.onerror = () => {
+        el2.remove();
+        reject(new Error(src));
+      };
+      document.head.append(el2);
+    });
+  }
+  async function loadEngine() {
+    if (window.Tesseract) return;
+    if (scriptPromise) return scriptPromise;
+    scriptPromise = (async () => {
+      for (const origin of ORIGINS) {
+        try {
+          await loadOne(`${origin}/tesseract.js@${VERSION}/dist/tesseract.min.js`);
+          activeOrigin = origin;
+          return;
+        } catch {
+        }
+      }
+      scriptPromise = null;
+      throw new Error("文字認識エンジンを読み込めませんでした。通信できる環境で開き直してください。");
+    })();
+    return scriptPromise;
+  }
+  async function getWorker(lang, onProgress) {
+    if (workers.has(lang)) return workers.get(lang);
+    await loadEngine();
+    const promise = window.Tesseract.createWorker(lang, 1, {
+      workerPath: `${activeOrigin}/tesseract.js@${VERSION}/dist/worker.min.js`,
+      corePath: `${activeOrigin}/tesseract.js-core@${CORE_VERSION}`,
+      langPath: LANG_URL,
+      logger: (m) => onProgress?.(m)
+    });
+    workers.set(lang, promise);
+    return promise;
+  }
+  function collectWords(data) {
+    const words = [];
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (Array.isArray(node)) {
+        node.forEach(visit);
+        return;
+      }
+      if (node.words) {
+        node.words.forEach((w) => {
+          if (w.text?.trim()) words.push({ text: w.text, bbox: w.bbox, confidence: w.confidence ?? 0 });
+        });
+        return;
+      }
+      ["blocks", "paragraphs", "lines"].forEach((key) => visit(node[key]));
+    };
+    visit(data.blocks ?? []);
+    if (words.length === 0 && Array.isArray(data.words)) {
+      data.words.forEach((w) => {
+        if (w.text?.trim()) words.push({ text: w.text, bbox: w.bbox, confidence: w.confidence ?? 0 });
+      });
+    }
+    return words;
+  }
+  function collectLines(data) {
+    const lines = [];
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (Array.isArray(node)) return node.forEach(visit);
+      if (node.lines) {
+        node.lines.forEach((l) => {
+          const words = (l.words ?? []).filter((w) => w.text?.trim());
+          if (words.length) lines.push({ text: l.text?.trim() ?? words.map((w) => w.text).join(" "), bbox: l.bbox, words });
+        });
+        return;
+      }
+      ["blocks", "paragraphs"].forEach((key) => visit(node[key]));
+    };
+    visit(data.blocks ?? []);
+    return lines;
+  }
+  async function recognize(canvas2, lang, onProgress) {
+    const worker = await getWorker(lang, onProgress);
+    const { data } = await worker.recognize(canvas2, {}, { text: true, blocks: true });
+    return {
+      text: data.text ?? "",
+      words: collectWords(data),
+      lines: collectLines(data),
+      confidence: data.confidence ?? 0
+    };
+  }
+
+  // src/app.js
+  var $ = (id) => document.getElementById(id);
+  var el = {
+    stage: $("stage"),
+    preview: $("preview"),
+    shot: $("shot"),
+    overlay: $("overlay"),
+    liveControls: $("live-controls"),
+    camera: $("btn-camera"),
+    shutter: $("btn-shutter"),
+    retake: $("btn-retake"),
+    fileCamera: $("file-camera"),
+    fileAlbum: $("file-album"),
+    lang: $("lang"),
+    style: $("style"),
+    toggleOverlay: $("toggle-overlay"),
+    status: $("status"),
+    progress: $("progress"),
+    bar: $("progress-bar"),
+    hint: $("hint"),
+    textPanel: $("text-panel"),
+    textView: $("text-view"),
+    speak: $("btn-speak"),
+    copy: $("btn-copy")
+  };
+  var MAX_EDGE = 1600;
+  var STORE_KEY = "rubycam.lang";
+  var stream = null;
+  var canvas = null;
+  var lastResult = null;
+  var busy = false;
+  LANGUAGES.forEach((l) => {
+    const o = document.createElement("option");
+    o.value = l.code;
+    o.textContent = l.label;
+    el.lang.append(o);
+  });
+  el.lang.value = localStorage.getItem(STORE_KEY) ?? "en";
+  syncStyleOptions();
+  el.lang.addEventListener("change", () => {
+    localStorage.setItem(STORE_KEY, el.lang.value);
+    syncStyleOptions();
+    if (lastResult) render();
+  });
+  el.style.addEventListener("change", () => lastResult && render());
+  el.toggleOverlay.addEventListener("change", () => lastResult && render());
+  el.camera.addEventListener("click", startCamera);
+  el.shutter.addEventListener("click", shoot);
+  el.retake.addEventListener("click", reset);
+  el.fileCamera.addEventListener("change", onFile);
+  el.fileAlbum.addEventListener("change", onFile);
+  var liveCameraAvailable = Boolean(navigator.mediaDevices?.getUserMedia);
+  if (!liveCameraAvailable) {
+    el.liveControls.hidden = true;
+    setStatus(defaultStatus());
+  }
+  el.speak.addEventListener("click", speakAll);
+  el.copy.addEventListener("click", copyReadings);
+  function syncStyleOptions() {
+    const lang = getLanguage(el.lang.value);
+    const supportsRoman = ["ko", "ru", "el", "zh"].includes(lang.code);
+    el.style.disabled = !supportsRoman;
+    if (!supportsRoman) el.style.value = "kana";
+    if (lang.code === "zh") el.style.value = el.style.value === "kana" ? "kana" : "roman";
+  }
+  async function startCamera() {
+    if (!liveCameraAvailable) {
+      setStatus("この開き方では画面内カメラが使えません。「カメラで撮る」をお使いください。");
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 } },
+        audio: false
+      });
+      el.preview.srcObject = stream;
+      await el.preview.play();
+      el.stage.classList.add("live");
+      el.stage.classList.remove("shot");
+      el.shutter.disabled = false;
+      setStatus("紙が画面いっぱいに入るように構えて、撮影してください。");
+    } catch (e) {
+      setStatus(`カメラを起動できませんでした（${e.name}）。「写真を選ぶ」からでも使えます。`);
+    }
+  }
+  function stopCamera() {
+    stream?.getTracks().forEach((t) => t.stop());
+    stream = null;
+    el.stage.classList.remove("live");
+  }
+  function shoot() {
+    if (!stream) return;
+    const v = el.preview;
+    setImage(v, v.videoWidth, v.videoHeight);
+    stopCamera();
+    run();
+  }
+  function onFile(ev) {
+    const file = ev.target.files?.[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      setImage(img, img.naturalWidth, img.naturalHeight);
+      stopCamera();
+      URL.revokeObjectURL(img.src);
+      run();
+    };
+    img.onerror = () => setStatus("この画像は読み込めませんでした。");
+    img.src = URL.createObjectURL(file);
+    ev.target.value = "";
+  }
+  function setImage(source, width, height) {
+    const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
+    canvas = document.createElement("canvas");
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    canvas.getContext("2d").drawImage(source, 0, 0, canvas.width, canvas.height);
+    el.shot.src = canvas.toDataURL("image/jpeg", 0.92);
+    el.stage.classList.add("shot");
+    el.retake.hidden = false;
+    el.shutter.disabled = true;
+  }
+  function reset() {
+    lastResult = null;
+    canvas = null;
+    el.overlay.replaceChildren();
+    el.stage.classList.remove("shot");
+    el.textPanel.hidden = true;
+    el.retake.hidden = true;
+    el.hint.hidden = true;
+    setStatus(defaultStatus());
+  }
+  async function run() {
+    if (busy || !canvas) return;
+    busy = true;
+    el.hint.hidden = true;
+    const lang = getLanguage(el.lang.value);
+    try {
+      setProgress(0.02);
+      setStatus(`${lang.label}として読み取っています…`);
+      await lang.prepare?.();
+      if (lang.isReady && !lang.isReady()) {
+        setStatus("中国語の読み仮名辞書を取得できませんでした。通信できる環境で開き直してください。");
+      }
+      const result = await recognize(canvas, lang.ocr, (m) => {
+        if (m.status === "recognizing text") setProgress(0.3 + m.progress * 0.7);
+        else if (typeof m.progress === "number") setProgress(m.progress * 0.3);
+      });
+      setProgress(1);
+      if (!result.text.trim()) {
+        setStatus("文字を見つけられませんでした。明るい場所で、紙を正面から撮り直してみてください。");
+        el.textPanel.hidden = true;
+        return;
+      }
+      lastResult = result;
+      render();
+      suggestLanguage(result.text);
+      setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）。`);
+    } catch (e) {
+      setStatus(e.message ?? "読み取りに失敗しました。");
+    } finally {
+      busy = false;
+      setTimeout(() => setProgress(null), 600);
+    }
+  }
+  function readingOf(lang, word) {
+    const core = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
+    if (!core) return null;
+    const r = lang.read(core, { style: el.style.value });
+    const text = el.style.value === "roman" && r.roman ? r.roman : r.ruby ?? r.kana;
+    if (!text) return null;
+    return { text, weak: r.confident === false, source: core };
+  }
+  function render() {
+    const lang = getLanguage(el.lang.value);
+    renderOverlay(lang);
+    renderText(lang);
+  }
+  function renderOverlay(lang) {
+    el.overlay.replaceChildren();
+    if (!el.toggleOverlay.checked || !lastResult || !canvas) return;
+    const W = canvas.width;
+    const H = canvas.height;
+    for (const w of lastResult.words) {
+      if (!w.bbox) continue;
+      const r = readingOf(lang, w.text);
+      if (!r) continue;
+      const { x0, y0, x1, y1 } = w.bbox;
+      const box = document.createElement("div");
+      const nearTop = y0 / H < 0.09;
+      box.className = `w${r.weak ? " weak" : ""}${nearTop ? " below" : ""}`;
+      box.style.left = `${x0 / W * 100}%`;
+      box.style.top = `${y0 / H * 100}%`;
+      box.style.width = `${(x1 - x0) / W * 100}%`;
+      box.style.height = `${(y1 - y0) / H * 100}%`;
+      const rt = document.createElement("b");
+      rt.textContent = r.text;
+      const byHeight = (y1 - y0) / W * 100 * 0.62;
+      const byWidth = (x1 - x0) / W * 100 * 1.7 / Math.max(1, r.text.length * 0.62);
+      rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
+      box.append(rt);
+      box.title = w.text;
+      box.addEventListener("click", () => speak(w.text, lang));
+      el.overlay.append(box);
+    }
+  }
+  function renderText(lang) {
+    el.textView.replaceChildren();
+    if (!lastResult) return;
+    const lines = lastResult.lines.length ? lastResult.lines.map((l) => l.text) : lastResult.text.split("\n");
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const p = document.createElement("p");
+      for (const token of tokenize2(line, lang.code)) {
+        if (!token.isWord) {
+          p.append(token.text);
+          continue;
+        }
+        const r = readingOf(lang, token.text);
+        if (!r) {
+          p.append(token.text);
+          continue;
+        }
+        const ruby = document.createElement("ruby");
+        if (r.weak) ruby.className = "weak";
+        ruby.append(token.text);
+        const rt = document.createElement("rt");
+        rt.textContent = r.text;
+        ruby.append(rt);
+        ruby.addEventListener("click", () => speak(token.text, lang));
+        p.append(ruby);
+      }
+      el.textView.append(p);
+    }
+    el.textPanel.hidden = el.textView.childElementCount === 0;
+  }
+  function suggestLanguage(text) {
+    const guess = detectLanguage(text);
+    if (guess === el.lang.value) return;
+    const lang = getLanguage(guess);
+    el.hint.replaceChildren(`この文章は${lang.label}のようです。`);
+    const btn = document.createElement("button");
+    btn.className = "btn small";
+    btn.textContent = `${lang.label}で読み直す`;
+    btn.addEventListener("click", () => {
+      el.lang.value = guess;
+      localStorage.setItem(STORE_KEY, guess);
+      syncStyleOptions();
+      el.hint.hidden = true;
+      run();
+    });
+    el.hint.append(btn);
+    el.hint.hidden = false;
+  }
+  function speak(text, lang) {
+    if (!("speechSynthesis" in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang.speech;
+    u.rate = 0.9;
+    speechSynthesis.speak(u);
+  }
+  function speakAll() {
+    if (!lastResult) return;
+    speak(lastResult.text.replace(/\s+/g, " ").slice(0, 1e3), getLanguage(el.lang.value));
+  }
+  async function copyReadings() {
+    if (!lastResult) return;
+    const lang = getLanguage(el.lang.value);
+    const out = (lastResult.lines.length ? lastResult.lines.map((l) => l.text) : lastResult.text.split("\n")).filter((l) => l.trim()).map((line) => {
+      const reads = tokenize2(line, lang.code).filter((t) => t.isWord).map((t) => readingOf(lang, t.text)?.text ?? t.text).join(lang.code === "zh" ? "" : " ");
+      return `${line}
+${reads}`;
+    }).join("\n\n");
+    try {
+      await navigator.clipboard.writeText(out);
+      setStatus("読みをコピーしました。");
+    } catch {
+      setStatus("コピーできませんでした。文章を直接選択してコピーしてください。");
+    }
+  }
+  function defaultStatus() {
+    return liveCameraAvailable ? "写真を用意すると、ここに進み具合が出ます。" : "「カメラで撮る」で紙を撮ると、ここに進み具合が出ます。";
+  }
+  function setStatus(msg) {
+    el.status.textContent = msg;
+  }
+  function setProgress(v) {
+    if (v === null) {
+      el.progress.hidden = true;
+      el.bar.style.width = "0%";
+      return;
+    }
+    el.progress.hidden = false;
+    el.bar.style.width = `${Math.round(v * 100)}%`;
+  }
+  if ("serviceWorker" in navigator && location.protocol === "https:" && !window.__RUBYCAM_SINGLE_FILE__) {
+    navigator.serviceWorker.register("sw.js").catch(() => {
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

@@ -5,8 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#101418">
 <title>ルビカメラ — 外国語の紙に発音ルビをふる</title>
+<meta name="description" content="外国語の紙をカメラで撮ると、発音のふりがなを付けて返します。">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ルビカメラ">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
@@ -26,11 +32,17 @@
       <div class="overlay" id="overlay" aria-hidden="true"></div>
     </div>
 
-    <div class="controls">
+    <div class="controls" id="live-controls">
       <button type="button" id="btn-camera" class="btn">カメラを起動</button>
       <button type="button" id="btn-shutter" class="btn primary" disabled>撮影してルビをふる</button>
-      <label class="btn ghost" for="file">写真を選ぶ
-        <input type="file" id="file" accept="image/*" capture="environment" hidden>
+    </div>
+
+    <div class="controls">
+      <label class="btn primary" for="file-camera">カメラで撮る
+        <input type="file" id="file-camera" accept="image/*" capture="environment" hidden>
+      </label>
+      <label class="btn ghost" for="file-album">アルバムから選ぶ
+        <input type="file" id="file-album" accept="image/*" hidden>
       </label>
       <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
     </div>
