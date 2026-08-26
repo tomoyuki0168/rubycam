@@ -6,6 +6,15 @@
 <meta name="theme-color" content="#101418">
 <title>ルビカメラ — 外国語の紙に発音ルビをふる</title>
 <meta name="description" content="外国語の紙をカメラで撮ると、発音のふりがなを付けて返します。">
+<!-- LINE などに貼ったときの見え方。__SITE_URL__ は公開時に実際のURLへ置き換わる -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ルビカメラ">
+<meta property="og:title" content="ルビカメラ — 外国語の紙に発音ルビをふる">
+<meta property="og:description" content="外国語で書かれた紙をカメラで撮ると、読み方をふりがなで返します。英語・中国語・韓国語・ベトナム語ほか11言語。写真は端末から出ません。">
+<meta property="og:image" content="__SITE_URL__assets/og.png">
+<meta property="og:url" content="__SITE_URL__">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -81,6 +90,19 @@
     <p class="note" id="tone-legend" hidden></p>
     <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。
       点線の下線は、文字認識の綴りの誤りを補正した語です（タップすると元の綴りが出ます）。</p>
+  </section>
+
+  <section class="panel" id="share-panel">
+    <div class="panel-head">
+      <h2>このアプリを共有する</h2>
+    </div>
+    <p class="share-url" id="share-url"></p>
+    <div class="controls" id="share-actions">
+      <button type="button" id="btn-share" class="btn primary">共有する</button>
+      <a id="btn-line" class="btn line" target="_blank" rel="noopener">LINEで送る</a>
+      <button type="button" id="btn-copy-url" class="btn ghost">リンクをコピー</button>
+    </div>
+    <p class="note" id="share-note"></p>
   </section>
 
   <section class="panel about">

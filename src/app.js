@@ -16,6 +16,8 @@ const el = {
   status: $('status'), progress: $('progress'), bar: $('progress-bar'), hint: $('hint'),
   textPanel: $('text-panel'), textView: $('text-view'),
   speak: $('btn-speak'), copy: $('btn-copy'),
+  sharePanel: $('share-panel'), shareUrl: $('share-url'), shareActions: $('share-actions'),
+  share: $('btn-share'), line: $('btn-line'), copyUrl: $('btn-copy-url'), shareNote: $('share-note'),
 };
 
 const MAX_EDGE = 1600;
@@ -428,6 +430,55 @@ function setProgress(v) {
 }
 
 // 1ファイル版には sw.js が付いてこないので、そのときは登録しない
+/* ---------------- 共有 ---------------- */
+
+const SHARE_TITLE = 'ルビカメラ — 外国語の紙に発音ルビをふる';
+const SHARE_TEXT = '外国語で書かれた紙をカメラで撮ると、読み方をふりがなで返します。';
+
+/** 人に渡せるURLかどうか。ファイルとして開いた場合は渡せない */
+function shareableUrl() {
+  if (!['http:', 'https:'].includes(location.protocol)) return null;
+  return `${location.origin}${location.pathname}`.replace(/index\.html$/, '');
+}
+
+function setUpShare() {
+  const url = shareableUrl();
+  if (!url) {
+    el.shareUrl.hidden = true;
+    el.shareActions.hidden = true;
+    el.shareNote.textContent =
+      'このファイルは保存して開いているため、リンクとしては送れません。'
+      + '相手にも使ってもらうには、公開したURLから開いてください。';
+    return;
+  }
+
+  el.shareUrl.textContent = url;
+  el.line.href = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(SHARE_TITLE)}`;
+  el.share.hidden = !navigator.share;
+  el.shareNote.textContent = navigator.share
+    ? '「共有する」を押すと、LINE を含む端末の共有メニューが開きます。'
+    : 'リンクを送れば、相手はそのまま開いて使えます。インストールは要りません。';
+
+  el.share.addEventListener('click', async () => {
+    try {
+      await navigator.share({ title: SHARE_TITLE, text: SHARE_TEXT, url });
+    } catch {
+      /* 利用者が閉じただけなので何もしない */
+    }
+  });
+
+  el.copyUrl.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      el.shareNote.textContent = 'リンクをコピーしました。LINE に貼り付けて送れます。';
+    } catch {
+      el.shareNote.textContent = '上のリンクを長押しして選択し、コピーしてください。';
+    }
+  });
+}
+
+setUpShare();
+
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.__RUBYCAM_SINGLE_FILE__) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

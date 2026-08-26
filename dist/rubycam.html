@@ -6,6 +6,15 @@
 <meta name="theme-color" content="#101418">
 <title>ルビカメラ — 外国語の紙に発音ルビをふる</title>
 <meta name="description" content="外国語の紙をカメラで撮ると、発音のふりがなを付けて返します。">
+<!-- LINE などに貼ったときの見え方。 は公開時に実際のURLへ置き換わる -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ルビカメラ">
+<meta property="og:title" content="ルビカメラ — 外国語の紙に発音ルビをふる">
+<meta property="og:description" content="外国語で書かれた紙をカメラで撮ると、読み方をふりがなで返します。英語・中国語・韓国語・ベトナム語ほか11言語。写真は端末から出ません。">
+<meta property="og:image" content="assets/og.png">
+<meta property="og:url" content="">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -158,6 +167,20 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 .text-view ruby:hover { background: #223447; border-radius: 4px; }
 
 .note { color: var(--muted); font-size: 0.78rem; margin: 0.8rem 0 0; }
+
+.btn.line { background: #06c755; border-color: #06c755; color: #04220f; font-weight: 700; text-decoration: none; }
+.btn.line:hover { border-color: #06c755; filter: brightness(1.08); }
+.share-url {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--fg);
+  background: #12181e;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 .about h2 { margin: 0 0 0.5rem; font-size: 0.95rem; }
 .about ol { margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: var(--muted); }
 
@@ -229,6 +252,19 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     <p class="note" id="tone-legend" hidden></p>
     <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。
       点線の下線は、文字認識の綴りの誤りを補正した語です（タップすると元の綴りが出ます）。</p>
+  </section>
+
+  <section class="panel" id="share-panel">
+    <div class="panel-head">
+      <h2>このアプリを共有する</h2>
+    </div>
+    <p class="share-url" id="share-url"></p>
+    <div class="controls" id="share-actions">
+      <button type="button" id="btn-share" class="btn primary">共有する</button>
+      <a id="btn-line" class="btn line" target="_blank" rel="noopener">LINEで送る</a>
+      <button type="button" id="btn-copy-url" class="btn ghost">リンクをコピー</button>
+    </div>
+    <p class="note" id="share-note"></p>
   </section>
 
   <section class="panel about">
@@ -2731,7 +2767,14 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     textPanel: $("text-panel"),
     textView: $("text-view"),
     speak: $("btn-speak"),
-    copy: $("btn-copy")
+    copy: $("btn-copy"),
+    sharePanel: $("share-panel"),
+    shareUrl: $("share-url"),
+    shareActions: $("share-actions"),
+    share: $("btn-share"),
+    line: $("btn-line"),
+    copyUrl: $("btn-copy-url"),
+    shareNote: $("share-note")
   };
   var MAX_EDGE = 1600;
   var STORE_KEY = "rubycam.lang";
@@ -3074,6 +3117,40 @@ ${reads}`;
     el.progress.hidden = false;
     el.bar.style.width = `${Math.round(v * 100)}%`;
   }
+  var SHARE_TITLE = "ルビカメラ — 外国語の紙に発音ルビをふる";
+  var SHARE_TEXT = "外国語で書かれた紙をカメラで撮ると、読み方をふりがなで返します。";
+  function shareableUrl() {
+    if (!["http:", "https:"].includes(location.protocol)) return null;
+    return `${location.origin}${location.pathname}`.replace(/index\.html$/, "");
+  }
+  function setUpShare() {
+    const url = shareableUrl();
+    if (!url) {
+      el.shareUrl.hidden = true;
+      el.shareActions.hidden = true;
+      el.shareNote.textContent = "このファイルは保存して開いているため、リンクとしては送れません。相手にも使ってもらうには、公開したURLから開いてください。";
+      return;
+    }
+    el.shareUrl.textContent = url;
+    el.line.href = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(SHARE_TITLE)}`;
+    el.share.hidden = !navigator.share;
+    el.shareNote.textContent = navigator.share ? "「共有する」を押すと、LINE を含む端末の共有メニューが開きます。" : "リンクを送れば、相手はそのまま開いて使えます。インストールは要りません。";
+    el.share.addEventListener("click", async () => {
+      try {
+        await navigator.share({ title: SHARE_TITLE, text: SHARE_TEXT, url });
+      } catch {
+      }
+    });
+    el.copyUrl.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        el.shareNote.textContent = "リンクをコピーしました。LINE に貼り付けて送れます。";
+      } catch {
+        el.shareNote.textContent = "上のリンクを長押しして選択し、コピーしてください。";
+      }
+    });
+  }
+  setUpShare();
   if ("serviceWorker" in navigator && location.protocol === "https:" && !window.__RUBYCAM_SINGLE_FILE__) {
     navigator.serviceWorker.register("sw.js").catch(() => {
     });

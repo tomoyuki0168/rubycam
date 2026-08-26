@@ -1,8 +1,8 @@
 /* 自前のファイルだけを先読みしておく最小の Service Worker */
-const CACHE = 'rubycam-v2';
+const CACHE = 'rubycam-v3';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
-  './assets/styles.css', './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png',
+  './assets/styles.css', './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png', './assets/og.png',
   './src/app.js', './src/ocr.js', './src/kana.js', './src/enhance.js',
   './src/lang/index.js', './src/lang/rules.js', './src/lang/en.js', './src/lang/en-dict.js',
   './src/lang/ko.js', './src/lang/zh.js', './src/lang/vi.js', './src/lang/ru.js',

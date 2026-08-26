@@ -33,6 +33,8 @@ const pngData = `data:image/png;base64,${png192.toString('base64')}`;
 
 let html = await readFile(p('index.html'), 'utf8');
 html = html
+  // 1ファイル版は URL を持たないので、共有カードの参照は相対のままにする
+  .replaceAll('__SITE_URL__', '')
   .replace('<link rel="manifest" href="manifest.webmanifest">\n', '')
   .replace('href="assets/icon.svg"', `href="${iconData}"`)
   .replace('href="assets/icon-192.png"', `href="${pngData}"`)
