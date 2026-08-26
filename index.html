@@ -57,7 +57,11 @@
           <option value="roman">現地の読み（ローマ字・ピンイン）</option>
         </select>
       </label>
+      <label id="dialect-field" hidden>発音
+        <select id="dialect"></select>
+      </label>
       <label class="check"><input type="checkbox" id="toggle-overlay" checked> 写真にルビを重ねる</label>
+      <label class="check"><input type="checkbox" id="toggle-enhance" checked> 文字を読みやすく補正する</label>
     </div>
 
     <p class="status" id="status" role="status">写真を用意すると、ここに進み具合が出ます。</p>
@@ -74,7 +78,9 @@
       </div>
     </div>
     <div id="text-view" class="text-view"></div>
-    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。</p>
+    <p class="note" id="tone-legend" hidden></p>
+    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。
+      点線の下線は、文字認識の綴りの誤りを補正した語です（タップすると元の綴りが出ます）。</p>
   </section>
 
   <section class="panel about">

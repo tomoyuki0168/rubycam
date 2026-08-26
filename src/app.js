@@ -1,6 +1,7 @@
 /** 画面まわり — 撮影、文字認識、ルビの生成と表示 */
 import { LANGUAGES, getLanguage, detectLanguage, tokenize } from './lang/index.js';
 import { recognize } from './ocr.js';
+import { enhance } from './enhance.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -9,6 +10,9 @@ const el = {
   camera: $('btn-camera'), shutter: $('btn-shutter'), retake: $('btn-retake'),
   fileCamera: $('file-camera'), fileAlbum: $('file-album'),
   lang: $('lang'), style: $('style'), toggleOverlay: $('toggle-overlay'),
+  toggleEnhance: $('toggle-enhance'),
+  dialectField: $('dialect-field'), dialect: $('dialect'),
+  toneLegend: $('tone-legend'),
   status: $('status'), progress: $('progress'), bar: $('progress-bar'), hint: $('hint'),
   textPanel: $('text-panel'), textView: $('text-view'),
   speak: $('btn-speak'), copy: $('btn-copy'),
@@ -16,6 +20,7 @@ const el = {
 
 const MAX_EDGE = 1600;
 const STORE_KEY = 'rubycam.lang';
+const DIALECT_KEY = 'rubycam.dialect';
 
 let stream = null;
 let canvas = null;
@@ -40,6 +45,10 @@ el.lang.addEventListener('change', () => {
 });
 el.style.addEventListener('change', () => lastResult && render());
 el.toggleOverlay.addEventListener('change', () => lastResult && render());
+el.dialect.addEventListener('change', () => {
+  localStorage.setItem(DIALECT_KEY, el.dialect.value);
+  if (lastResult) render();
+});
 
 el.camera.addEventListener('click', startCamera);
 el.shutter.addEventListener('click', shoot);
@@ -57,13 +66,28 @@ if (!liveCameraAvailable) {
 el.speak.addEventListener('click', speakAll);
 el.copy.addEventListener('click', copyReadings);
 
-/** 現地表記のルビを持たない言語では選択肢を出さない */
+/** 選んだ言語に関係のない設定は出さない */
 function syncStyleOptions() {
   const lang = getLanguage(el.lang.value);
   const supportsRoman = ['ko', 'ru', 'el', 'zh'].includes(lang.code);
   el.style.disabled = !supportsRoman;
   if (!supportsRoman) el.style.value = 'kana';
   if (lang.code === 'zh') el.style.value = el.style.value === 'kana' ? 'kana' : 'roman';
+
+  // 発音が地域で大きく分かれる言語だけ、選べるようにする
+  el.dialectField.hidden = !lang.dialects;
+  if (lang.dialects) {
+    const saved = localStorage.getItem(DIALECT_KEY);
+    el.dialect.replaceChildren(
+      ...lang.dialects.map((d) => {
+        const o = document.createElement('option');
+        o.value = d.value;
+        o.textContent = d.label;
+        return o;
+      }),
+    );
+    el.dialect.value = lang.dialects.some((d) => d.value === saved) ? saved : lang.dialects[0].value;
+  }
 }
 
 /* ---------------- 撮影 ---------------- */
@@ -137,6 +161,7 @@ function reset() {
   el.overlay.replaceChildren();
   el.stage.classList.remove('shot');
   el.textPanel.hidden = true;
+  el.toneLegend.hidden = true;
   el.retake.hidden = true;
   el.hint.hidden = true;
   setStatus(defaultStatus());
@@ -157,7 +182,8 @@ async function run() {
       setStatus('中国語の読み仮名辞書を取得できませんでした。通信できる環境で開き直してください。');
     }
 
-    const result = await recognize(canvas, lang.ocr, (m) => {
+    const target = el.toggleEnhance.checked ? enhance(canvas) : canvas;
+    const result = await recognize(target, lang.ocr, (m) => {
       if (m.status === 'recognizing text') setProgress(0.3 + m.progress * 0.7);
       else if (typeof m.progress === 'number') setProgress(m.progress * 0.3);
     });
@@ -166,13 +192,16 @@ async function run() {
     if (!result.text.trim()) {
       setStatus('文字を見つけられませんでした。明るい場所で、紙を正面から撮り直してみてください。');
       el.textPanel.hidden = true;
+  el.toneLegend.hidden = true;
       return;
     }
 
     lastResult = result;
     render();
     suggestLanguage(result.text);
-    setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）。`);
+    const fixed = countFixed(lang);
+    const note = fixed ? `、うち${fixed}語は綴りを補正しました` : '';
+    setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）${note}。`);
   } catch (e) {
     setStatus(e.message ?? '読み取りに失敗しました。');
   } finally {
@@ -183,18 +212,64 @@ async function run() {
 
 /** 語からルビを1つ作る */
 function readingOf(lang, word) {
-  const core = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
-  if (!core) return null;
-  const r = lang.read(core, { style: el.style.value });
-  const text = el.style.value === 'roman' && r.roman ? r.roman : r.ruby ?? r.kana;
+  const raw = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
+  if (!raw) return null;
+
+  // 文字認識が綴りを取り違えていたら、直せる範囲で直してから読む
+  const fix = lang.correct?.(raw);
+  const core = fix?.changed ? fix.text : raw;
+
+  const r = lang.read(core, { style: el.style.value, dialect: el.dialect.value });
+  const roman = el.style.value === 'roman' && r.roman;
+  const text = roman ? r.roman : r.ruby ?? r.kana;
   if (!text) return null;
-  return { text, weak: r.confident === false, source: core };
+  return {
+    text,
+    // 声調は読みそのものではないので、色を分けて添える
+    sign: roman ? '' : r.sign ?? '',
+    weak: r.confident === false,
+    source: core,
+    fixedFrom: fix?.changed ? raw : null,
+  };
+}
+
+/** 読み + 声調記号 を、記号だけ色を変えて組み立てる */
+function rubyNodes(r) {
+  const nodes = [document.createTextNode(r.text)];
+  if (r.sign) {
+    const tone = document.createElement('i');
+    tone.className = 'tone';
+    tone.textContent = r.sign;
+    nodes.push(tone);
+  }
+  return nodes;
 }
 
 function render() {
   const lang = getLanguage(el.lang.value);
   renderOverlay(lang);
   renderText(lang);
+  renderToneLegend(lang);
+}
+
+/** 声調のある言語では、ルビに添えた記号の意味を出す */
+function renderToneLegend(lang) {
+  el.toneLegend.replaceChildren();
+  if (!lang.toneLegend || el.style.value === 'roman') {
+    el.toneLegend.hidden = true;
+    return;
+  }
+  el.toneLegend.className = 'note tone-legend';
+  el.toneLegend.append('ルビの末尾の記号は声調です — ');
+  for (const [sign, meaning] of lang.toneLegend) {
+    const span = document.createElement('span');
+    const b = document.createElement('b');
+    b.textContent = sign;
+    span.append(b, meaning);
+    el.toneLegend.append(span);
+  }
+  el.toneLegend.append('（記号なしは平らに伸ばす）');
+  el.toneLegend.hidden = false;
 }
 
 function renderOverlay(lang) {
@@ -210,20 +285,20 @@ function renderOverlay(lang) {
     const { x0, y0, x1, y1 } = w.bbox;
     const box = document.createElement('div');
     const nearTop = y0 / H < 0.09;
-    box.className = `w${r.weak ? ' weak' : ''}${nearTop ? ' below' : ''}`;
+    box.className = `w${r.weak ? ' weak' : ''}${nearTop ? ' below' : ''}${r.fixedFrom ? ' fixed' : ''}`;
     box.style.left = `${(x0 / W) * 100}%`;
     box.style.top = `${(y0 / H) * 100}%`;
     box.style.width = `${((x1 - x0) / W) * 100}%`;
     box.style.height = `${((y1 - y0) / H) * 100}%`;
     const rt = document.createElement('b');
-    rt.textContent = r.text;
+    rt.append(...rubyNodes(r));
     // 文字の高さに合わせる。cqw なので写真を縮めてもルビの比率は崩れない。
     // 語の幅よりルビが長くなりすぎると隣とぶつかるので、幅でも頭を押さえる
     const byHeight = ((y1 - y0) / W) * 100 * 0.62;
-    const byWidth = (((x1 - x0) / W) * 100 * 1.7) / Math.max(1, r.text.length * 0.62);
+    const byWidth = (((x1 - x0) / W) * 100 * 1.7) / Math.max(1, (r.text.length + r.sign.length) * 0.62);
     rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
     box.append(rt);
-    box.title = w.text;
+    box.title = r.fixedFrom ? `${r.fixedFrom} → ${r.source}` : w.text;
     box.addEventListener('click', () => speak(w.text, lang));
     el.overlay.append(box);
   }
@@ -250,10 +325,11 @@ function renderText(lang) {
         continue;
       }
       const ruby = document.createElement('ruby');
-      if (r.weak) ruby.className = 'weak';
+      ruby.className = `${r.weak ? 'weak ' : ''}${r.fixedFrom ? 'fixed' : ''}`.trim();
+      if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
       ruby.append(token.text);
       const rt = document.createElement('rt');
-      rt.textContent = r.text;
+      rt.append(...rubyNodes(r));
       ruby.append(rt);
       ruby.addEventListener('click', () => speak(token.text, lang));
       p.append(ruby);
@@ -261,6 +337,12 @@ function renderText(lang) {
     el.textView.append(p);
   }
   el.textPanel.hidden = el.textView.childElementCount === 0;
+}
+
+/** 文字認識の綴りを直した語の数 */
+function countFixed(lang) {
+  if (!lang.correct || !lastResult) return 0;
+  return lastResult.words.filter((w) => readingOf(lang, w.text)?.fixedFrom).length;
 }
 
 /** 選んだ言語と中身が食い違うときだけ、切り替えを提案する */
@@ -307,7 +389,10 @@ async function copyReadings() {
     .map((line) => {
       const reads = tokenize(line, lang.code)
         .filter((t) => t.isWord)
-        .map((t) => readingOf(lang, t.text)?.text ?? t.text)
+        .map((t) => {
+          const r = readingOf(lang, t.text);
+          return r ? r.text + r.sign : t.text;
+        })
         .join(lang.code === 'zh' ? '' : ' ');
       return `${line}\n${reads}`;
     })

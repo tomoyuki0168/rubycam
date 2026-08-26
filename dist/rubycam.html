@@ -148,6 +148,13 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 .text-view ruby { cursor: pointer; }
 .text-view rt { font-size: 0.5em; color: var(--ruby); font-weight: 600; }
 .text-view ruby.weak rt { color: var(--ruby-weak); }
+.text-view ruby.fixed { border-bottom: 1px dotted var(--accent); }
+.overlay .w.fixed { border-bottom-style: dotted; }
+/* 声調記号は読みと混ざらないよう色を変える */
+.tone { font-style: normal; color: var(--accent); padding-left: 0.1em; }
+.overlay .w b .tone { color: #8fc4ff; }
+.tone-legend b { color: var(--accent); font-weight: 700; margin-right: 0.15em; }
+.tone-legend span { margin-right: 0.7em; white-space: nowrap; }
 .text-view ruby:hover { background: #223447; border-radius: 4px; }
 
 .note { color: var(--muted); font-size: 0.78rem; margin: 0.8rem 0 0; }
@@ -198,7 +205,11 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
           <option value="roman">現地の読み（ローマ字・ピンイン）</option>
         </select>
       </label>
+      <label id="dialect-field" hidden>発音
+        <select id="dialect"></select>
+      </label>
       <label class="check"><input type="checkbox" id="toggle-overlay" checked> 写真にルビを重ねる</label>
+      <label class="check"><input type="checkbox" id="toggle-enhance" checked> 文字を読みやすく補正する</label>
     </div>
 
     <p class="status" id="status" role="status">写真を用意すると、ここに進み具合が出ます。</p>
@@ -215,7 +226,9 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       </div>
     </div>
     <div id="text-view" class="text-view"></div>
-    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。</p>
+    <p class="note" id="tone-legend" hidden></p>
+    <p class="note">語をタップすると、その単語だけを読み上げます。うすい色のルビは辞書に無い語の推定読みです。
+      点線の下線は、文字認識の綴りの誤りを補正した語です（タップすると元の綴りが出ます）。</p>
   </section>
 
   <section class="panel about">
@@ -233,8 +246,8 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 <script>
 (() => {
   // src/lang/rules.js
-  function compile(rules5) {
-    return rules5.map(([pattern, out]) => {
+  function compile(rules4) {
+    return rules4.map(([pattern, out]) => {
       if (pattern instanceof RegExp) {
         const flags = pattern.flags.replace(/[gy]/g, "") + "y";
         return { re: new RegExp(pattern.source, flags), out };
@@ -1567,114 +1580,416 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   };
 
   // src/lang/vi.js
-  var TONE_MARKS = /[̣̀́̃̉]/g;
-  var TONE_NAME = {
-    "̀": "huyền",
-    "́": "sắc",
-    "̃": "ngã",
-    "̉": "hỏi",
-    "̣": "nặng"
+  var TONE_MARKS = { "̀": "huyền", "́": "sắc", "̃": "ngã", "̉": "hỏi", "̣": "nặng" };
+  var TONE_RE = /[̣̀́̃̉]/g;
+  var TONE_SIGN = {
+    ngang: "",
+    huyền: "ˋ",
+    sắc: "ˊ",
+    hỏi: "ˇ",
+    ngã: "˜",
+    nặng: "ˎ"
   };
+  var TONE_LEGEND = [
+    ["ˊ", "上がる"],
+    ["ˋ", "低く下がる"],
+    ["ˇ", "下がって上がる"],
+    ["˜", "ゆれて上がる"],
+    ["ˎ", "短く落とす"]
+  ];
   function stripTone2(word) {
-    return word.normalize("NFD").replace(TONE_MARKS, "").normalize("NFC");
+    return word.normalize("NFD").replace(TONE_RE, "").normalize("NFC");
   }
   function toneOf(word) {
-    const d = word.normalize("NFD");
-    for (const ch of d) if (TONE_NAME[ch]) return TONE_NAME[ch];
+    for (const ch of word.normalize("NFD")) {
+      if (TONE_MARKS[ch]) return TONE_MARKS[ch];
+    }
     return "ngang";
   }
-  var rules2 = compile([
-    // 頭子音（長いものから）
-    [/^ngh/, "N"],
-    [/^ng/, "N"],
-    [/^nh/, "J"],
-    [/^ch/, "tS"],
-    [/^tr/, "tS"],
-    [/^th/, "t"],
-    [/^ph/, "f"],
-    [/^kh/, "k"],
-    [/^gh/, "g"],
-    [/^gi(?=[aăâeêioôơuưy])/, "z"],
-    [/^gi/, "zi"],
-    [/^qu/, "ku"],
-    [/^đ/, "d"],
-    [/^d/, "z"],
-    [/^r/, "r"],
-    [/^x/, "s"],
-    [/^s/, "s"],
-    [/^v/, "b"],
-    [/^[ck]/, "k"],
-    // 末子音を含むまとまり
-    [/anh$/, "ain"],
-    [/ach$/, "aik"],
-    [/inh$/, "in"],
-    [/ênh$/, "en"],
-    [/nh$/, "n"],
-    [/ng$/, "n"],
-    [/ch$/, "k"],
-    [/c$/, "k"],
-    // 母音の連なり
-    ["ươ", "uo"],
-    ["uô", "uo"],
-    ["ưa", "ua"],
-    ["iê", "ie"],
-    ["yê", "ie"],
-    ["ây", "ai"],
-    ["ay", "ai"],
-    ["ai", "ai"],
-    ["ao", "ao"],
-    ["âu", "au"],
-    ["au", "au"],
-    ["eo", "eo"],
-    ["êu", "eu"],
-    ["ia", "ia"],
-    ["iu", "iu"],
-    ["oa", "oa"],
-    ["oe", "oe"],
-    ["oi", "oi"],
-    ["ôi", "oi"],
-    ["ơi", "oi"],
-    ["ua", "ua"],
-    ["uê", "ue"],
-    ["ui", "ui"],
-    ["uy", "ui"],
-    ["ưu", "uu"],
-    // 単母音
-    [/[aăâ]/, "a"],
-    [/[eê]/, "e"],
-    [/[iy]/, "i"],
-    [/[oôơ]/, "o"],
-    [/[uư]/, "u"],
-    // 残りの子音
-    ["b", "b"],
-    ["g", "g"],
-    ["h", "h"],
-    ["k", "k"],
-    ["l", "l"],
-    ["m", "m"],
-    ["n", "n"],
-    ["p", "p"],
-    ["t", "t"],
-    ["đ", "d"],
-    ["d", "z"],
-    ["v", "b"],
-    ["x", "s"],
-    ["s", "s"],
-    ["r", "r"],
-    ["c", "k"]
-  ]);
+  var ONSETS = [
+    "ngh",
+    "ng",
+    "nh",
+    "ch",
+    "tr",
+    "th",
+    "ph",
+    "kh",
+    "gh",
+    "gi",
+    "qu",
+    "b",
+    "c",
+    "d",
+    "đ",
+    "g",
+    "h",
+    "k",
+    "l",
+    "m",
+    "n",
+    "p",
+    "r",
+    "s",
+    "t",
+    "v",
+    "x"
+  ];
+  var ONSET_PHONEME2 = {
+    "": ["", ""],
+    b: ["b", "b"],
+    c: ["k", "k"],
+    k: ["k", "k"],
+    qu: ["ku", "wu"],
+    ch: ["tS", "tS"],
+    tr: ["tS", "tS"],
+    th: ["t", "t"],
+    t: ["t", "t"],
+    d: ["z", "y"],
+    gi: ["z", "y"],
+    đ: ["d", "d"],
+    g: ["g", "g"],
+    gh: ["g", "g"],
+    h: ["h", "h"],
+    kh: ["k", "k"],
+    l: ["l", "l"],
+    m: ["m", "m"],
+    n: ["n", "n"],
+    ng: ["N", "N"],
+    ngh: ["N", "N"],
+    nh: ["J", "J"],
+    p: ["p", "p"],
+    ph: ["f", "f"],
+    r: ["z", "r"],
+    s: ["s", "S"],
+    v: ["v", "y"],
+    x: ["s", "s"]
+  };
+  var RHYMES = {
+    // 末子音なし
+    a: "a",
+    ă: "a",
+    â: "a",
+    e: "e",
+    ê: "e",
+    i: "i",
+    y: "i",
+    o: "o",
+    ô: "o",
+    ơ: "o:",
+    u: "u",
+    ư: "u:",
+    ia: "ia",
+    ya: "ia",
+    ua: "ua",
+    ưa: "ua",
+    oa: "oa",
+    oe: "oe",
+    uê: "ue",
+    uy: "ui",
+    uơ: "uo",
+    uya: "uia",
+    ai: "ai",
+    ao: "ao",
+    au: "au",
+    ay: "ai",
+    âu: "au",
+    ây: "ai",
+    eo: "eo",
+    êu: "eu",
+    iu: "iu",
+    oi: "oi",
+    ôi: "oi",
+    ơi: "oi",
+    ui: "ui",
+    ưi: "ui",
+    ưu: "uu",
+    iêu: "ieu",
+    yêu: "ieu",
+    uôi: "uoi",
+    ươi: "uoi",
+    ươu: "uou",
+    oai: "oai",
+    oay: "oai",
+    uây: "uai",
+    oao: "oao",
+    uao: "uao",
+    oeo: "oeo",
+    // -m
+    am: "am",
+    ăm: "am",
+    âm: "am",
+    em: "em",
+    êm: "em",
+    im: "im",
+    om: "om",
+    ôm: "om",
+    ơm: "om",
+    um: "um",
+    iêm: "iem",
+    yêm: "iem",
+    uôm: "uom",
+    ươm: "uom",
+    oam: "oam",
+    oăm: "oam",
+    // -n
+    an: "an",
+    ăn: "an",
+    ân: "an",
+    en: "en",
+    ên: "en",
+    in: "in",
+    on: "on",
+    ôn: "on",
+    ơn: "on",
+    un: "un",
+    ưn: "un",
+    iên: "ien",
+    yên: "ien",
+    uôn: "uon",
+    ươn: "uon",
+    oan: "oan",
+    oăn: "oan",
+    uân: "uan",
+    uyên: "uen",
+    oen: "oen",
+    uyn: "uin",
+    // -ng（カタカナでは「ン」）
+    ang: "an",
+    ăng: "an",
+    âng: "an",
+    eng: "en",
+    ong: "on",
+    ông: "on",
+    ung: "un",
+    ưng: "un",
+    iêng: "ien",
+    yêng: "ien",
+    uông: "uon",
+    ương: "uon",
+    oang: "oan",
+    oăng: "oan",
+    uâng: "uan",
+    oong: "on",
+    uyêng: "uen",
+    // -nh（直前の母音がずれる）
+    anh: "ain",
+    ênh: "en",
+    inh: "in",
+    oanh: "oain",
+    uynh: "uin",
+    // -p
+    ap: "aQp",
+    ăp: "aQp",
+    âp: "aQp",
+    ep: "eQp",
+    êp: "eQp",
+    ip: "iQp",
+    op: "oQp",
+    ôp: "oQp",
+    ơp: "oQp",
+    up: "uQp",
+    iêp: "ieQp",
+    yêp: "ieQp",
+    ươp: "uoQp",
+    oap: "oaQp",
+    // -t
+    at: "aQt",
+    ăt: "aQt",
+    ât: "aQt",
+    et: "eQt",
+    êt: "eQt",
+    it: "iQt",
+    ot: "oQt",
+    ôt: "oQt",
+    ơt: "oQt",
+    ut: "uQt",
+    ưt: "uQt",
+    iêt: "ieQt",
+    yêt: "ieQt",
+    uôt: "uoQt",
+    ươt: "uoQt",
+    oat: "oaQt",
+    oăt: "oaQt",
+    uât: "uaQt",
+    uyêt: "ueQt",
+    uyt: "uiQt",
+    // -c
+    ac: "aQk",
+    ăc: "aQk",
+    âc: "aQk",
+    ec: "eQk",
+    oc: "oQk",
+    ôc: "oQk",
+    uc: "uQk",
+    ưc: "uQk",
+    iêc: "ieQk",
+    uôc: "uoQk",
+    ươc: "uoQk",
+    oac: "oaQk",
+    oăc: "oaQk",
+    // -ch（直前の母音がずれる）
+    ach: "aQk",
+    êch: "eQk",
+    ich: "iQk",
+    oach: "oaQk",
+    uêch: "ueQk"
+  };
+  function splitSyllable(base) {
+    const w = base.toLowerCase();
+    const onset = ONSETS.find((o) => w.startsWith(o) && RHYMES[w.slice(o.length)] !== void 0);
+    if (onset !== void 0) return { onset, rhyme: w.slice(onset.length) };
+    if (w === "gi") return { onset: "gi", rhyme: "i" };
+    if (RHYMES[w] !== void 0) return { onset: "", rhyme: w };
+    return null;
+  }
+  function isSyllable(word) {
+    const letters = stripTone2(word).toLowerCase().replace(/[^a-zàáâãăđèéêìíòóôõơùúưýỳỹ]/gi, "");
+    if (!letters) return false;
+    return splitSyllable(letters) !== null;
+  }
+  var QUALITY = { "̂": 1, "̆": 1, "̛": 1 };
+  var QUALITY_OPTIONS = {
+    a: ["", "̂", "̆"],
+    e: ["", "̂"],
+    o: ["", "̂", "̛"],
+    u: ["", "̛"],
+    d: ["d", "đ"]
+  };
+  function units(word) {
+    const out = [];
+    for (const ch of word.normalize("NFD")) {
+      if (QUALITY[ch] && out.length) out[out.length - 1].quality = ch;
+      else if (TONE_MARKS[ch] && out.length) out[out.length - 1].tone = ch;
+      else out.push({ base: ch, quality: "", tone: "" });
+    }
+    return out;
+  }
+  var render = (us) => us.map((u) => u.base + u.quality + u.tone).join("").normalize("NFC");
+  function correctSyllable(word) {
+    if (isSyllable(word)) return { text: word, changed: false };
+    const us = units(word);
+    if (!us.some((u) => u.quality || u.tone || u.base === "đ" || u.base === "Đ")) {
+      return { text: word, changed: false, failed: true };
+    }
+    const spots = us.map((u, i) => [i, QUALITY_OPTIONS[u.base.toLowerCase()]]).filter(([, opts]) => opts !== void 0);
+    if (spots.length === 0 || spots.length > 4) return { text: word, changed: false, failed: true };
+    for (const depth of [1, 2]) {
+      const hits = /* @__PURE__ */ new Map();
+      for (const combo of combinations(spots, depth)) {
+        const trial = us.map((u) => ({ ...u }));
+        let removed = 0;
+        for (const [i, value] of combo) {
+          if (trial[i].base.toLowerCase() === "d") {
+            trial[i].base = trial[i].base === trial[i].base.toUpperCase() ? value.toUpperCase() : value;
+          } else {
+            if (trial[i].quality && trial[i].quality !== value) removed += 1;
+            trial[i].quality = value;
+          }
+        }
+        const text = render(trial);
+        if (text !== word && isSyllable(text)) {
+          hits.set(text, Math.min(hits.get(text) ?? Infinity, removed));
+        }
+      }
+      if (hits.size === 0) continue;
+      const best = Math.min(...hits.values());
+      const shortlist = [...hits].filter(([, removed]) => removed === best).map(([text]) => text);
+      if (shortlist.length === 1) return { text: shortlist[0], changed: true, from: word };
+      return { text: word, changed: false, failed: true, ambiguous: true };
+    }
+    return { text: word, changed: false, failed: true };
+  }
+  function* combinations(spots, depth, start = 0, acc = []) {
+    if (acc.length === depth) {
+      yield acc;
+      return;
+    }
+    for (let i = start; i < spots.length; i += 1) {
+      const [index, options] = spots[i];
+      for (const value of options) {
+        yield* combinations(spots, depth, i + 1, [...acc, [index, value]]);
+      }
+    }
+  }
+  var LOOSE = {
+    ngh: "N",
+    ng: "N",
+    nh: "J",
+    ch: "tS",
+    tr: "tS",
+    th: "t",
+    ph: "f",
+    kh: "k",
+    gh: "g",
+    gi: "z",
+    qu: "ku",
+    đ: "d",
+    d: "z",
+    c: "k",
+    k: "k",
+    x: "s",
+    v: "v",
+    b: "b",
+    g: "g",
+    h: "h",
+    l: "l",
+    m: "m",
+    n: "n",
+    p: "p",
+    r: "z",
+    s: "s",
+    t: "t",
+    a: "a",
+    ă: "a",
+    â: "a",
+    e: "e",
+    ê: "e",
+    i: "i",
+    y: "i",
+    o: "o",
+    ô: "o",
+    ơ: "o",
+    u: "u",
+    ư: "u"
+  };
+  var LOOSE_KEYS = Object.keys(LOOSE).sort((a, b) => b.length - a.length);
+  function approximate(base) {
+    let ph = "";
+    let i = 0;
+    while (i < base.length) {
+      const hit = LOOSE_KEYS.find((k) => base.startsWith(k, i));
+      if (!hit) {
+        i += 1;
+        continue;
+      }
+      ph += LOOSE[hit];
+      i += hit.length;
+    }
+    return toKatakana(ph);
+  }
   var vi_default = {
     code: "vi",
     label: "ベトナム語",
     ocr: "vie",
     speech: "vi-VN",
     script: "latin",
-    // ベトナム語は音節ごとに空白で区切って書くので、単語ではなく音節単位で読む
-    read(word) {
-      const syllable = stripTone2(word).toLowerCase();
-      let ph = transcribe(syllable, rules2);
-      ph = ph.replace(/([aiueo])([ktp])$/, "$1Q$2");
-      return { kana: toKatakana(ph), tone: toneOf(word), phonemes: ph };
+    dialects: [
+      { value: "north", label: "北部（ハノイ）" },
+      { value: "south", label: "南部（ホーチミン）" }
+    ],
+    correct: correctSyllable,
+    toneLegend: TONE_LEGEND,
+    // ベトナム語は音節ごとに分かち書きするので、単語ではなく音節単位で読む
+    read(word, { dialect = "north" } = {}) {
+      const tone = toneOf(word);
+      const base = stripTone2(word).toLowerCase();
+      const parts = splitSyllable(base);
+      if (!parts) return { kana: approximate(base), tone, sign: TONE_SIGN[tone], confident: false };
+      const i = dialect === "south" ? 1 : 0;
+      const onset = ONSET_PHONEME2[parts.onset]?.[i] ?? "";
+      const ph = onset + RHYMES[parts.rhyme];
+      return { kana: toKatakana(ph), tone, sign: TONE_SIGN[tone], phonemes: ph };
     }
   };
 
@@ -1834,7 +2149,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 
   // src/lang/de.js
   var BACK = /[aouäöü]/;
-  var rules3 = compile([
+  var rules2 = compile([
     ["tsch", "tS"],
     ["sch", "S"],
     ["chs", "ks"],
@@ -1919,7 +2234,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     speech: "de-DE",
     script: "latin",
     read(word) {
-      let ph = geminate(transcribe(word.toLowerCase(), rules3));
+      let ph = geminate(transcribe(word.toLowerCase(), rules2));
       ph = lengthenFirstSyllable(ph, word.toLowerCase());
       ph = devoiceFinal(ph);
       ph = ph.replace(/x(?![aiueo:])/g, "xa");
@@ -1931,7 +2246,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   // src/lang/fr.js
   var NOT_V = "(?![aeiouyâàêéèëîïôûùü])";
   var NASAL_END = `${NOT_V}(?![nm])`;
-  var rules4 = compile([
+  var rules3 = compile([
     // 語末の黙字（2文字以上の語のみ）
     [/(?:ent|es|e|s|t|d|x|z|p|g)$/, (t, c) => c.index === 0 ? fallbackFinal(t) : ""],
     ["œu", "u"],
@@ -2009,7 +2324,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     speech: "fr-FR",
     script: "latin",
     read(word) {
-      let ph = transcribe(word.toLowerCase(), rules4);
+      let ph = transcribe(word.toLowerCase(), rules3);
       ph = ph.replace(/([aiueo])r$/, "$1:r");
       return { kana: toKatakana(ph), phonemes: ph };
     }
@@ -2142,7 +2457,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     ["w", "w"],
     ["y", "i"]
   ]);
-  function makeLang({ code, label, ocr, speech, rules: rules5, gem = true }) {
+  function makeLang({ code, label, ocr, speech, rules: rules4, gem = true }) {
     return {
       code,
       label,
@@ -2151,7 +2466,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       script: "latin",
       read(word) {
         const w = word.toLowerCase();
-        let ph = transcribe(w, rules5);
+        let ph = transcribe(w, rules4);
         if (gem) ph = geminate(ph);
         return { kana: toKatakana(ph), phonemes: ph };
       }
@@ -2333,6 +2648,62 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     };
   }
 
+  // src/enhance.js
+  function enhance(source) {
+    const w = source.width;
+    const h = source.height;
+    const src = source.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h);
+    const px = src.data;
+    const gray = new Uint8Array(w * h);
+    for (let i = 0, p = 0; i < gray.length; i += 1, p += 4) {
+      gray[i] = (px[p] * 299 + px[p + 1] * 587 + px[p + 2] * 114) / 1e3;
+    }
+    const sum = new Int32Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y += 1) {
+      let rowSum = 0;
+      for (let x = 0; x < w; x += 1) {
+        rowSum += gray[y * w + x];
+        sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + rowSum;
+      }
+    }
+    const radius = Math.max(7, Math.round(Math.min(w, h) / 40));
+    const bias = 0.12;
+    const out = document.createElement("canvas");
+    out.width = w;
+    out.height = h;
+    const dst = out.getContext("2d").createImageData(w, h);
+    const dp = dst.data;
+    let dark = 0;
+    for (let y = 0; y < h; y += 1) {
+      const y0 = Math.max(0, y - radius);
+      const y1 = Math.min(h - 1, y + radius);
+      for (let x = 0; x < w; x += 1) {
+        const x0 = Math.max(0, x - radius);
+        const x1 = Math.min(w - 1, x + radius);
+        const count = (x1 - x0 + 1) * (y1 - y0 + 1);
+        const total = sum[(y1 + 1) * (w + 1) + x1 + 1] - sum[y0 * (w + 1) + x1 + 1] - sum[(y1 + 1) * (w + 1) + x0] + sum[y0 * (w + 1) + x0];
+        const mean = total / count;
+        const v = gray[y * w + x] < mean * (1 - bias) ? 0 : 255;
+        if (v === 0) dark += 1;
+        const p = (y * w + x) * 4;
+        dp[p] = v;
+        dp[p + 1] = v;
+        dp[p + 2] = v;
+        dp[p + 3] = 255;
+      }
+    }
+    if (dark > w * h * 0.5) {
+      for (let p = 0; p < dp.length; p += 4) {
+        const v = 255 - dp[p];
+        dp[p] = v;
+        dp[p + 1] = v;
+        dp[p + 2] = v;
+      }
+    }
+    out.getContext("2d").putImageData(dst, 0, 0);
+    return out;
+  }
+
   // src/app.js
   var $ = (id) => document.getElementById(id);
   var el = {
@@ -2349,6 +2720,10 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     lang: $("lang"),
     style: $("style"),
     toggleOverlay: $("toggle-overlay"),
+    toggleEnhance: $("toggle-enhance"),
+    dialectField: $("dialect-field"),
+    dialect: $("dialect"),
+    toneLegend: $("tone-legend"),
     status: $("status"),
     progress: $("progress"),
     bar: $("progress-bar"),
@@ -2360,6 +2735,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   };
   var MAX_EDGE = 1600;
   var STORE_KEY = "rubycam.lang";
+  var DIALECT_KEY = "rubycam.dialect";
   var stream = null;
   var canvas = null;
   var lastResult = null;
@@ -2375,10 +2751,14 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
   el.lang.addEventListener("change", () => {
     localStorage.setItem(STORE_KEY, el.lang.value);
     syncStyleOptions();
-    if (lastResult) render();
+    if (lastResult) render2();
   });
-  el.style.addEventListener("change", () => lastResult && render());
-  el.toggleOverlay.addEventListener("change", () => lastResult && render());
+  el.style.addEventListener("change", () => lastResult && render2());
+  el.toggleOverlay.addEventListener("change", () => lastResult && render2());
+  el.dialect.addEventListener("change", () => {
+    localStorage.setItem(DIALECT_KEY, el.dialect.value);
+    if (lastResult) render2();
+  });
   el.camera.addEventListener("click", startCamera);
   el.shutter.addEventListener("click", shoot);
   el.retake.addEventListener("click", reset);
@@ -2397,6 +2777,19 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     el.style.disabled = !supportsRoman;
     if (!supportsRoman) el.style.value = "kana";
     if (lang.code === "zh") el.style.value = el.style.value === "kana" ? "kana" : "roman";
+    el.dialectField.hidden = !lang.dialects;
+    if (lang.dialects) {
+      const saved = localStorage.getItem(DIALECT_KEY);
+      el.dialect.replaceChildren(
+        ...lang.dialects.map((d) => {
+          const o = document.createElement("option");
+          o.value = d.value;
+          o.textContent = d.label;
+          return o;
+        })
+      );
+      el.dialect.value = lang.dialects.some((d) => d.value === saved) ? saved : lang.dialects[0].value;
+    }
   }
   async function startCamera() {
     if (!liveCameraAvailable) {
@@ -2461,6 +2854,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     el.overlay.replaceChildren();
     el.stage.classList.remove("shot");
     el.textPanel.hidden = true;
+    el.toneLegend.hidden = true;
     el.retake.hidden = true;
     el.hint.hidden = true;
     setStatus(defaultStatus());
@@ -2477,7 +2871,8 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       if (lang.isReady && !lang.isReady()) {
         setStatus("中国語の読み仮名辞書を取得できませんでした。通信できる環境で開き直してください。");
       }
-      const result = await recognize(canvas, lang.ocr, (m) => {
+      const target = el.toggleEnhance.checked ? enhance(canvas) : canvas;
+      const result = await recognize(target, lang.ocr, (m) => {
         if (m.status === "recognizing text") setProgress(0.3 + m.progress * 0.7);
         else if (typeof m.progress === "number") setProgress(m.progress * 0.3);
       });
@@ -2485,12 +2880,15 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       if (!result.text.trim()) {
         setStatus("文字を見つけられませんでした。明るい場所で、紙を正面から撮り直してみてください。");
         el.textPanel.hidden = true;
+        el.toneLegend.hidden = true;
         return;
       }
       lastResult = result;
-      render();
+      render2();
       suggestLanguage(result.text);
-      setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）。`);
+      const fixed = countFixed(lang);
+      const note = fixed ? `、うち${fixed}語は綴りを補正しました` : "";
+      setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）${note}。`);
     } catch (e) {
       setStatus(e.message ?? "読み取りに失敗しました。");
     } finally {
@@ -2499,17 +2897,56 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     }
   }
   function readingOf(lang, word) {
-    const core = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
-    if (!core) return null;
-    const r = lang.read(core, { style: el.style.value });
-    const text = el.style.value === "roman" && r.roman ? r.roman : r.ruby ?? r.kana;
+    const raw = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
+    if (!raw) return null;
+    const fix = lang.correct?.(raw);
+    const core = fix?.changed ? fix.text : raw;
+    const r = lang.read(core, { style: el.style.value, dialect: el.dialect.value });
+    const roman = el.style.value === "roman" && r.roman;
+    const text = roman ? r.roman : r.ruby ?? r.kana;
     if (!text) return null;
-    return { text, weak: r.confident === false, source: core };
+    return {
+      text,
+      // 声調は読みそのものではないので、色を分けて添える
+      sign: roman ? "" : r.sign ?? "",
+      weak: r.confident === false,
+      source: core,
+      fixedFrom: fix?.changed ? raw : null
+    };
   }
-  function render() {
+  function rubyNodes(r) {
+    const nodes = [document.createTextNode(r.text)];
+    if (r.sign) {
+      const tone = document.createElement("i");
+      tone.className = "tone";
+      tone.textContent = r.sign;
+      nodes.push(tone);
+    }
+    return nodes;
+  }
+  function render2() {
     const lang = getLanguage(el.lang.value);
     renderOverlay(lang);
     renderText(lang);
+    renderToneLegend(lang);
+  }
+  function renderToneLegend(lang) {
+    el.toneLegend.replaceChildren();
+    if (!lang.toneLegend || el.style.value === "roman") {
+      el.toneLegend.hidden = true;
+      return;
+    }
+    el.toneLegend.className = "note tone-legend";
+    el.toneLegend.append("ルビの末尾の記号は声調です — ");
+    for (const [sign, meaning] of lang.toneLegend) {
+      const span = document.createElement("span");
+      const b = document.createElement("b");
+      b.textContent = sign;
+      span.append(b, meaning);
+      el.toneLegend.append(span);
+    }
+    el.toneLegend.append("（記号なしは平らに伸ばす）");
+    el.toneLegend.hidden = false;
   }
   function renderOverlay(lang) {
     el.overlay.replaceChildren();
@@ -2523,18 +2960,18 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       const { x0, y0, x1, y1 } = w.bbox;
       const box = document.createElement("div");
       const nearTop = y0 / H < 0.09;
-      box.className = `w${r.weak ? " weak" : ""}${nearTop ? " below" : ""}`;
+      box.className = `w${r.weak ? " weak" : ""}${nearTop ? " below" : ""}${r.fixedFrom ? " fixed" : ""}`;
       box.style.left = `${x0 / W * 100}%`;
       box.style.top = `${y0 / H * 100}%`;
       box.style.width = `${(x1 - x0) / W * 100}%`;
       box.style.height = `${(y1 - y0) / H * 100}%`;
       const rt = document.createElement("b");
-      rt.textContent = r.text;
+      rt.append(...rubyNodes(r));
       const byHeight = (y1 - y0) / W * 100 * 0.62;
-      const byWidth = (x1 - x0) / W * 100 * 1.7 / Math.max(1, r.text.length * 0.62);
+      const byWidth = (x1 - x0) / W * 100 * 1.7 / Math.max(1, (r.text.length + r.sign.length) * 0.62);
       rt.style.fontSize = `${Math.max(1.5, Math.min(byHeight, byWidth))}cqw`;
       box.append(rt);
-      box.title = w.text;
+      box.title = r.fixedFrom ? `${r.fixedFrom} → ${r.source}` : w.text;
       box.addEventListener("click", () => speak(w.text, lang));
       el.overlay.append(box);
     }
@@ -2557,10 +2994,11 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
           continue;
         }
         const ruby = document.createElement("ruby");
-        if (r.weak) ruby.className = "weak";
+        ruby.className = `${r.weak ? "weak " : ""}${r.fixedFrom ? "fixed" : ""}`.trim();
+        if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
         ruby.append(token.text);
         const rt = document.createElement("rt");
-        rt.textContent = r.text;
+        rt.append(...rubyNodes(r));
         ruby.append(rt);
         ruby.addEventListener("click", () => speak(token.text, lang));
         p.append(ruby);
@@ -2568,6 +3006,10 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       el.textView.append(p);
     }
     el.textPanel.hidden = el.textView.childElementCount === 0;
+  }
+  function countFixed(lang) {
+    if (!lang.correct || !lastResult) return 0;
+    return lastResult.words.filter((w) => readingOf(lang, w.text)?.fixedFrom).length;
   }
   function suggestLanguage(text) {
     const guess = detectLanguage(text);
@@ -2603,7 +3045,10 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     if (!lastResult) return;
     const lang = getLanguage(el.lang.value);
     const out = (lastResult.lines.length ? lastResult.lines.map((l) => l.text) : lastResult.text.split("\n")).filter((l) => l.trim()).map((line) => {
-      const reads = tokenize2(line, lang.code).filter((t) => t.isWord).map((t) => readingOf(lang, t.text)?.text ?? t.text).join(lang.code === "zh" ? "" : " ");
+      const reads = tokenize2(line, lang.code).filter((t) => t.isWord).map((t) => {
+        const r = readingOf(lang, t.text);
+        return r ? r.text + r.sign : t.text;
+      }).join(lang.code === "zh" ? "" : " ");
       return `${line}
 ${reads}`;
     }).join("\n\n");

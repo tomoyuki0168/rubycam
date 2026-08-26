@@ -133,6 +133,13 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 .text-view ruby { cursor: pointer; }
 .text-view rt { font-size: 0.5em; color: var(--ruby); font-weight: 600; }
 .text-view ruby.weak rt { color: var(--ruby-weak); }
+.text-view ruby.fixed { border-bottom: 1px dotted var(--accent); }
+.overlay .w.fixed { border-bottom-style: dotted; }
+/* 声調記号は読みと混ざらないよう色を変える */
+.tone { font-style: normal; color: var(--accent); padding-left: 0.1em; }
+.overlay .w b .tone { color: #8fc4ff; }
+.tone-legend b { color: var(--accent); font-weight: 700; margin-right: 0.15em; }
+.tone-legend span { margin-right: 0.7em; white-space: nowrap; }
 .text-view ruby:hover { background: #223447; border-radius: 4px; }
 
 .note { color: var(--muted); font-size: 0.78rem; margin: 0.8rem 0 0; }

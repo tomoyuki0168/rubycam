@@ -6,6 +6,7 @@ import { getLanguage, detectLanguage, tokenize } from '../src/lang/index.js';
 import { pinyinToKatakana } from '../src/lang/zh.js';
 import { decompose, applySandhi } from '../src/lang/ko.js';
 import { EN_DICT } from '../src/lang/en-dict.js';
+import { correctSyllable, isSyllable } from '../src/lang/vi.js';
 
 const reads = (code, cases) => {
   const lang = getLanguage(code);
@@ -105,15 +106,81 @@ test('韓国語 — 終声は次の初声に渡る', () => {
   assert.equal(b.onset, 'g');
 });
 
-test('ベトナム語 — 声調記号を外して読む', () => {
+test('ベトナム語 — 音節を分解して読む', () => {
   const vi = getLanguage('vi');
-  assert.equal(vi.read('Việt').kana, 'ビエット');
-  assert.equal(vi.read('phở').kana, 'フォ');
-  assert.equal(vi.read('Nẵng').kana, 'ナン');
-  assert.equal(vi.read('bánh').kana, 'バイン');
-  assert.equal(vi.read('nước').kana, 'ヌオック');
-  assert.equal(vi.read('cà').tone, 'huyền');
-  assert.equal(vi.read('hai').tone, 'ngang');
+  const kana = (w) => vi.read(w).kana;
+  assert.equal(kana('Việt'), 'ヴィエット');
+  assert.equal(kana('phở'), 'フォー');        // ơ は長母音
+  assert.equal(kana('giữ'), 'ズー');
+  assert.equal(kana('Nẵng'), 'ナン');
+  assert.equal(kana('bánh'), 'バイン');       // anh は母音がずれる
+  assert.equal(kana('khách'), 'カック');      // ach は詰まる
+  assert.equal(kana('lịch'), 'リック');
+  assert.equal(kana('nước'), 'ヌオック');
+  assert.equal(kana('Nguyễn'), 'ングエン');
+  assert.equal(kana('người'), 'ングオイ');
+  assert.equal(kana('không'), 'コン');
+  assert.equal(kana('quán'), 'クアン');
+  assert.equal(kana('những'), 'ニュン');
+});
+
+test('ベトナム語 — 声調を読みに添える', () => {
+  const vi = getLanguage('vi');
+  assert.deepEqual(
+    ['cà', 'cá', 'cả', 'cã', 'cạ', 'ca'].map((w) => vi.read(w).tone),
+    ['huyền', 'sắc', 'hỏi', 'ngã', 'nặng', 'ngang'],
+  );
+  assert.equal(vi.read('phở').sign, 'ˇ');
+  assert.equal(vi.read('ba').sign, '');
+});
+
+test('ベトナム語 — 北部と南部で読みが変わる', () => {
+  const vi = getLanguage('vi');
+  const north = (w) => vi.read(w, { dialect: 'north' }).kana;
+  const south = (w) => vi.read(w, { dialect: 'south' }).kana;
+  assert.equal(north('dài'), 'ザイ');
+  assert.equal(south('dài'), 'ヤイ');
+  assert.equal(north('rất'), 'ザット');
+  assert.equal(south('rất'), 'ラット');
+  assert.equal(north('và'), 'ヴァ');
+  assert.equal(south('và'), 'ヤ');
+  assert.equal(north('sinh'), 'シン');
+  assert.equal(south('sinh'), 'シン');
+});
+
+test('ベトナム語 — 音節として成り立つかを判定する', () => {
+  for (const w of ['xin', 'chào', 'nước', 'khách', 'Nguyễn', 'quyền', 'pho']) {
+    assert.equal(isSyllable(w), true, w);
+  }
+  for (const w of ['nưoc', 'ơng', 'bànn', 'qq']) {
+    assert.equal(isSyllable(w), false, w);
+  }
+});
+
+test('ベトナム語 — 文字認識の綴りの誤りを直す', () => {
+  // 記号が一部読めているときだけ、足りない記号を補う
+  assert.equal(correctSyllable('nưoc').text, 'nươc');
+  assert.equal(correctSyllable('nuơc').text, 'nươc');
+  assert.equal(correctSyllable('Viẹt').text, 'Việt');
+  assert.equal(correctSyllable('ngưòi').text, 'người');
+  assert.equal(correctSyllable('Đuờng').text, 'Đường');
+
+  // 記号が1つも無い語は、元からそうなのか読み落としか区別できないので触らない
+  assert.equal(correctSyllable('nuoc').changed, false);
+  assert.equal(correctSyllable('duong').changed, false);
+
+  // 正しい綴りはそのまま
+  assert.equal(correctSyllable('chào').changed, false);
+  assert.equal(correctSyllable('tiếng').changed, false);
+
+  // 直しようがない語も、勝手に変えない
+  assert.equal(correctSyllable('bànn').changed, false);
+});
+
+test('ベトナム語 — 読めない綴りでも当て読みを返す', () => {
+  const r = getLanguage('vi').read('bànn');
+  assert.equal(r.confident, false);
+  assert.ok(r.kana.length > 0);
 });
 
 test('中国語 — ピンインからカタカナ', () => {
