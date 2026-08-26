@@ -237,22 +237,18 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       <video id="preview" playsinline muted autoplay></video>
       <img id="shot" alt="撮影した写真">
       <div class="stage-empty" id="stage-empty">
-        <p>紙を撮るか、保存済みの写真を選んでください</p>
+        <p>「カメラで撮る」を押すか、保存済みの写真を選んでください</p>
       </div>
       <div class="overlay" id="overlay" aria-hidden="true"></div>
-    </div>
-
-    <div class="controls" id="live-controls">
-      <button type="button" id="btn-camera" class="btn">カメラを起動</button>
-      <button type="button" id="btn-shutter" class="btn primary" disabled>撮影してルビをふる</button>
     </div>
 
     <div class="controls">
       <button type="button" id="btn-camera-file" class="btn primary">カメラで撮る</button>
       <button type="button" id="btn-album" class="btn ghost">アルバムから選ぶ</button>
+      <button type="button" id="btn-stop" class="btn ghost" hidden>やめる</button>
+      <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
       <input type="file" id="file-camera" class="file-input" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
       <input type="file" id="file-album" class="file-input" accept="image/*" tabindex="-1" aria-hidden="true">
-      <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
     </div>
 
     <div class="settings">
@@ -4462,13 +4458,11 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     preview: $("preview"),
     shot: $("shot"),
     overlay: $("overlay"),
-    liveControls: $("live-controls"),
-    camera: $("btn-camera"),
-    shutter: $("btn-shutter"),
     retake: $("btn-retake"),
+    stop: $("btn-stop"),
     fileCamera: $("file-camera"),
     fileAlbum: $("file-album"),
-    cameraFileBtn: $("btn-camera-file"),
+    cameraBtn: $("btn-camera-file"),
     albumBtn: $("btn-album"),
     browserWarning: $("browser-warning"),
     lang: $("lang"),
@@ -4538,18 +4532,27 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     store.set(DIALECT_KEY, el.dialect.value);
     if (lastResult) render2();
   });
-  el.camera.addEventListener("click", startCamera);
-  el.shutter.addEventListener("click", shoot);
   el.retake.addEventListener("click", reset);
+  el.stop.addEventListener("click", () => {
+    stopCamera();
+    setStatus(defaultStatus());
+  });
   el.fileCamera.addEventListener("change", onFile);
   el.fileAlbum.addEventListener("change", onFile);
-  el.cameraFileBtn.addEventListener("click", () => el.fileCamera.click());
   el.albumBtn.addEventListener("click", () => el.fileAlbum.click());
   var liveCameraAvailable = Boolean(navigator.mediaDevices?.getUserMedia);
-  if (!liveCameraAvailable) {
-    el.liveControls.hidden = true;
-    setStatus(defaultStatus());
-  }
+  el.cameraBtn.addEventListener("click", () => {
+    if (stream) {
+      shoot();
+      return;
+    }
+    if (!liveCameraAvailable) {
+      el.fileCamera.click();
+      return;
+    }
+    startCamera();
+  });
+  setStatus(defaultStatus());
   el.speak.addEventListener("click", speakAll);
   el.copy.addEventListener("click", copyReadings);
   function syncStyleOptions() {
@@ -4573,10 +4576,8 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     }
   }
   async function startCamera() {
-    if (!liveCameraAvailable) {
-      setStatus("この開き方では画面内カメラが使えません。「カメラで撮る」をお使いください。");
-      return;
-    }
+    el.hint.hidden = true;
+    setStatus("カメラを準備しています…");
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 } },
@@ -4586,16 +4587,31 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       await el.preview.play();
       el.stage.classList.add("live");
       el.stage.classList.remove("shot");
-      el.shutter.disabled = false;
-      setStatus("紙が画面いっぱいに入るように構えて、撮影してください。");
+      el.cameraBtn.textContent = "撮影する";
+      el.stop.hidden = false;
+      el.retake.hidden = true;
+      setStatus("紙が画面いっぱいに入るように構えて、「撮影する」を押してください。");
     } catch (e) {
-      setStatus(`カメラを起動できませんでした（${e.name}）。「写真を選ぶ」からでも使えます。`);
+      offerDeviceCamera(e);
     }
+  }
+  function offerDeviceCamera(error) {
+    setStatus(`画面内のカメラを使えませんでした（${error.name}）。`);
+    el.hint.replaceChildren("端末のカメラで撮ることもできます。");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn small";
+    btn.textContent = "端末のカメラで撮る";
+    btn.addEventListener("click", () => el.fileCamera.click());
+    el.hint.append(btn);
+    el.hint.hidden = false;
   }
   function stopCamera() {
     stream?.getTracks().forEach((t) => t.stop());
     stream = null;
     el.stage.classList.remove("live");
+    el.cameraBtn.textContent = "カメラで撮る";
+    el.stop.hidden = true;
   }
   function shoot() {
     if (!stream) return;
@@ -4627,7 +4643,6 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     el.shot.src = canvas.toDataURL("image/jpeg", 0.92);
     el.stage.classList.add("shot");
     el.retake.hidden = false;
-    el.shutter.disabled = true;
   }
   function reset() {
     lastResult = null;
@@ -4841,7 +4856,7 @@ ${reads}`;
     }
   }
   function defaultStatus() {
-    return liveCameraAvailable ? "写真を用意すると、ここに進み具合が出ます。" : "「カメラで撮る」で紙を撮ると、ここに進み具合が出ます。";
+    return "「カメラで撮る」で紙を撮ると、ここに進み具合が出ます。";
   }
   function setStatus(msg) {
     el.status.textContent = msg;

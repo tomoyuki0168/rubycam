@@ -7,10 +7,9 @@ import { makeQrSvg } from './qr.js';
 const $ = (id) => document.getElementById(id);
 const el = {
   stage: $('stage'), preview: $('preview'), shot: $('shot'), overlay: $('overlay'),
-  liveControls: $('live-controls'),
-  camera: $('btn-camera'), shutter: $('btn-shutter'), retake: $('btn-retake'),
+  retake: $('btn-retake'), stop: $('btn-stop'),
   fileCamera: $('file-camera'), fileAlbum: $('file-album'),
-  cameraFileBtn: $('btn-camera-file'), albumBtn: $('btn-album'),
+  cameraBtn: $('btn-camera-file'), albumBtn: $('btn-album'),
   browserWarning: $('browser-warning'),
   lang: $('lang'), style: $('style'), toggleOverlay: $('toggle-overlay'),
   toggleEnhance: $('toggle-enhance'),
@@ -80,23 +79,41 @@ el.dialect.addEventListener('change', () => {
   if (lastResult) render();
 });
 
-el.camera.addEventListener('click', startCamera);
-el.shutter.addEventListener('click', shoot);
 el.retake.addEventListener('click', reset);
+el.stop.addEventListener('click', () => {
+  stopCamera();
+  setStatus(defaultStatus());
+});
 el.fileCamera.addEventListener('change', onFile);
 el.fileAlbum.addEventListener('change', onFile);
-
-// 押した瞬間に同じ処理の流れの中で開く必要がある（iOS は遅らせると無視する）
-el.cameraFileBtn.addEventListener('click', () => el.fileCamera.click());
 el.albumBtn.addEventListener('click', () => el.fileAlbum.click());
 
-// https 以外で開くとブラウザがカメラを渡さない。その場合は
-// 「カメラで撮る」（端末の標準カメラを呼ぶ経路）だけを残す
+// https 以外ではブラウザがカメラ映像を渡さない（file:// やアプリ内ブラウザ）
 const liveCameraAvailable = Boolean(navigator.mediaDevices?.getUserMedia);
-if (!liveCameraAvailable) {
-  el.liveControls.hidden = true;
-  setStatus(defaultStatus());
-}
+
+/**
+ * 「カメラで撮る」の1つのボタンで、撮影までを引き受ける
+ *
+ * 画面内にカメラ映像を出せるならそれを使い、出せないときだけ
+ * 端末の標準カメラに回す。入口を1つにしないと、
+ * 「カメラで撮る」を押したのにアルバムが開く、という食い違いが起きる。
+ *
+ * 端末カメラを開く呼び出しは、押した流れの中で行う必要がある
+ * （iOS は非同期の待ちを挟むと無視する）。だから await の後には置かない。
+ */
+el.cameraBtn.addEventListener('click', () => {
+  if (stream) {
+    shoot();
+    return;
+  }
+  if (!liveCameraAvailable) {
+    el.fileCamera.click();
+    return;
+  }
+  startCamera();
+});
+
+setStatus(defaultStatus());
 el.speak.addEventListener('click', speakAll);
 el.copy.addEventListener('click', copyReadings);
 
@@ -127,10 +144,8 @@ function syncStyleOptions() {
 /* ---------------- 撮影 ---------------- */
 
 async function startCamera() {
-  if (!liveCameraAvailable) {
-    setStatus('この開き方では画面内カメラが使えません。「カメラで撮る」をお使いください。');
-    return;
-  }
+  el.hint.hidden = true;
+  setStatus('カメラを準備しています…');
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } },
@@ -140,17 +155,36 @@ async function startCamera() {
     await el.preview.play();
     el.stage.classList.add('live');
     el.stage.classList.remove('shot');
-    el.shutter.disabled = false;
-    setStatus('紙が画面いっぱいに入るように構えて、撮影してください。');
+    el.cameraBtn.textContent = '撮影する';
+    el.stop.hidden = false;
+    el.retake.hidden = true;
+    setStatus('紙が画面いっぱいに入るように構えて、「撮影する」を押してください。');
   } catch (e) {
-    setStatus(`カメラを起動できませんでした（${e.name}）。「写真を選ぶ」からでも使えます。`);
+    // ここは await のあとなので、端末カメラを直接開いても無視される。
+    // もう一度押してもらう形にする
+    offerDeviceCamera(e);
   }
+}
+
+/** 画面内カメラが使えなかったときに、端末の標準カメラへ回す案内を出す */
+function offerDeviceCamera(error) {
+  setStatus(`画面内のカメラを使えませんでした（${error.name}）。`);
+  el.hint.replaceChildren('端末のカメラで撮ることもできます。');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn small';
+  btn.textContent = '端末のカメラで撮る';
+  btn.addEventListener('click', () => el.fileCamera.click());
+  el.hint.append(btn);
+  el.hint.hidden = false;
 }
 
 function stopCamera() {
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
   el.stage.classList.remove('live');
+  el.cameraBtn.textContent = 'カメラで撮る';
+  el.stop.hidden = true;
 }
 
 function shoot() {
@@ -186,7 +220,6 @@ function setImage(source, width, height) {
   el.shot.src = canvas.toDataURL('image/jpeg', 0.92);
   el.stage.classList.add('shot');
   el.retake.hidden = false;
-  el.shutter.disabled = true;
 }
 
 function reset() {
@@ -442,9 +475,7 @@ async function copyReadings() {
 /* ---------------- 表示のこまごま ---------------- */
 
 function defaultStatus() {
-  return liveCameraAvailable
-    ? '写真を用意すると、ここに進み具合が出ます。'
-    : '「カメラで撮る」で紙を撮ると、ここに進み具合が出ます。';
+  return '「カメラで撮る」で紙を撮ると、ここに進み具合が出ます。';
 }
 
 function setStatus(msg) {

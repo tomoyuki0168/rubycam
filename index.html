@@ -39,22 +39,18 @@
       <video id="preview" playsinline muted autoplay></video>
       <img id="shot" alt="撮影した写真">
       <div class="stage-empty" id="stage-empty">
-        <p>紙を撮るか、保存済みの写真を選んでください</p>
+        <p>「カメラで撮る」を押すか、保存済みの写真を選んでください</p>
       </div>
       <div class="overlay" id="overlay" aria-hidden="true"></div>
-    </div>
-
-    <div class="controls" id="live-controls">
-      <button type="button" id="btn-camera" class="btn">カメラを起動</button>
-      <button type="button" id="btn-shutter" class="btn primary" disabled>撮影してルビをふる</button>
     </div>
 
     <div class="controls">
       <button type="button" id="btn-camera-file" class="btn primary">カメラで撮る</button>
       <button type="button" id="btn-album" class="btn ghost">アルバムから選ぶ</button>
+      <button type="button" id="btn-stop" class="btn ghost" hidden>やめる</button>
+      <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
       <input type="file" id="file-camera" class="file-input" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
       <input type="file" id="file-album" class="file-input" accept="image/*" tabindex="-1" aria-hidden="true">
-      <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
     </div>
 
     <div class="settings">
