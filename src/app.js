@@ -10,6 +10,8 @@ const el = {
   liveControls: $('live-controls'),
   camera: $('btn-camera'), shutter: $('btn-shutter'), retake: $('btn-retake'),
   fileCamera: $('file-camera'), fileAlbum: $('file-album'),
+  cameraFileBtn: $('btn-camera-file'), albumBtn: $('btn-album'),
+  browserWarning: $('browser-warning'),
   lang: $('lang'), style: $('style'), toggleOverlay: $('toggle-overlay'),
   toggleEnhance: $('toggle-enhance'),
   dialectField: $('dialect-field'), dialect: $('dialect'),
@@ -83,6 +85,10 @@ el.shutter.addEventListener('click', shoot);
 el.retake.addEventListener('click', reset);
 el.fileCamera.addEventListener('change', onFile);
 el.fileAlbum.addEventListener('change', onFile);
+
+// 押した瞬間に同じ処理の流れの中で開く必要がある（iOS は遅らせると無視する）
+el.cameraFileBtn.addEventListener('click', () => el.fileCamera.click());
+el.albumBtn.addEventListener('click', () => el.fileAlbum.click());
 
 // https 以外で開くとブラウザがカメラを渡さない。その場合は
 // 「カメラで撮る」（端末の標準カメラを呼ぶ経路）だけを残す
@@ -456,6 +462,48 @@ function setProgress(v) {
 }
 
 // 1ファイル版には sw.js が付いてこないので、そのときは登録しない
+/* ---------------- 開いているブラウザの事情 ---------------- */
+
+/**
+ * アプリ内ブラウザ（LINE など）で開かれているか
+ *
+ * LINE や各SNSのアプリ内ブラウザは、カメラや写真の選択を
+ * 通さないことがある。ここで見分けて、本来のブラウザへ誘導する。
+ */
+function inAppBrowser() {
+  const ua = navigator.userAgent;
+  if (/\bLine\//i.test(ua)) return 'LINE';
+  if (/FBAN|FBAV/i.test(ua)) return 'Facebook';
+  if (/Instagram/i.test(ua)) return 'Instagram';
+  return null;
+}
+
+/** LINE はこの印を付けたリンクを、端末のブラウザで開いてくれる */
+function externalLink(url) {
+  return `${url}${url.includes('?') ? '&' : '?'}openExternalBrowser=1`;
+}
+
+function warnAboutBrowser() {
+  const app = inAppBrowser();
+  const url = shareableUrl();
+  if (!app || !url) return;
+
+  const text = document.createElement('span');
+  text.textContent = `${app}のアプリ内ブラウザで開かれています。この画面ではカメラが使えないことがあります。`;
+  el.browserWarning.append(text);
+
+  if (app === 'LINE') {
+    const link = document.createElement('a');
+    link.className = 'btn small';
+    link.href = externalLink(url);
+    link.textContent = 'ブラウザで開く';
+    el.browserWarning.append(link);
+  } else {
+    text.textContent += ' 画面のメニューから「ブラウザで開く」を選んでください。';
+  }
+  el.browserWarning.hidden = false;
+}
+
 /* ---------------- 共有 ---------------- */
 
 const SHARE_TITLE = 'ルビカメラ — 外国語の紙に発音ルビをふる';
@@ -491,7 +539,8 @@ function setUpShare() {
   } catch {
     el.qr.hidden = true;
   }
-  el.line.href = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(SHARE_TITLE)}`;
+  // LINE から開いたときにアプリ内ブラウザに閉じ込められないよう、印を付けて渡す
+  el.line.href = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(externalLink(url))}&text=${encodeURIComponent(SHARE_TITLE)}`;
   el.share.hidden = !navigator.share;
   el.shareNote.textContent = navigator.share
     ? '「共有する」を押すと、LINE を含む端末の共有メニューが開きます。'
@@ -499,7 +548,7 @@ function setUpShare() {
 
   el.share.addEventListener('click', async () => {
     try {
-      await navigator.share({ title: SHARE_TITLE, text: SHARE_TEXT, url });
+      await navigator.share({ title: SHARE_TITLE, text: SHARE_TEXT, url: externalLink(url) });
     } catch {
       /* 利用者が閉じただけなので何もしない */
     }
@@ -507,7 +556,7 @@ function setUpShare() {
 
   el.copyUrl.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(externalLink(url));
       el.shareNote.textContent = 'リンクをコピーしました。LINE に貼り付けて送れます。';
     } catch {
       el.shareNote.textContent = '上のリンクを長押しして選択し、コピーしてください。';
@@ -520,7 +569,8 @@ function suggestInstall() {
   const HIDE_KEY = 'rubycam.installHintDismissed';
   const standalone = window.matchMedia('(display-mode: standalone)').matches
     || window.navigator.standalone === true;
-  if (!shareableUrl() || standalone || store.get(HIDE_KEY) === '1') return;
+  // アプリ内ブラウザではホーム画面に追加できない。警告と二重に出しても仕方がない
+  if (!shareableUrl() || standalone || inAppBrowser() || store.get(HIDE_KEY) === '1') return;
 
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const text = document.createElement('span');
@@ -541,6 +591,7 @@ function suggestInstall() {
   el.installHint.hidden = false;
 }
 
+warnAboutBrowser();
 setUpShare();
 suggestInstall();
 

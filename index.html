@@ -31,6 +31,7 @@
 </header>
 
 <main>
+  <p class="hint browser-warning" id="browser-warning" hidden></p>
   <p class="hint install-hint" id="install-hint" hidden></p>
 
   <section class="panel" id="capture-panel">
@@ -49,12 +50,10 @@
     </div>
 
     <div class="controls">
-      <label class="btn primary" for="file-camera">カメラで撮る
-        <input type="file" id="file-camera" accept="image/*" capture="environment" hidden>
-      </label>
-      <label class="btn ghost" for="file-album">アルバムから選ぶ
-        <input type="file" id="file-album" accept="image/*" hidden>
-      </label>
+      <button type="button" id="btn-camera-file" class="btn primary">カメラで撮る</button>
+      <button type="button" id="btn-album" class="btn ghost">アルバムから選ぶ</button>
+      <input type="file" id="file-camera" class="file-input" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+      <input type="file" id="file-album" class="file-input" accept="image/*" tabindex="-1" aria-hidden="true">
       <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
     </div>
 

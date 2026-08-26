@@ -16,6 +16,22 @@
 /* display を持つ要素にも hidden 属性を効かせる */
 [hidden] { display: none !important; }
 
+/*
+ * ファイル入力は隠すが display:none にはしない。
+ * iOS Safari は display:none の入力を開けず、カメラが起動しなくなる。
+ */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -152,6 +168,17 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 
 .install-hint { margin: 0 0 0.25rem; display: flex; gap: 0.6rem; align-items: center; }
 .install-hint span { flex: 1; }
+
+.browser-warning {
+  margin: 0 0 0.25rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  background: #3a2a12;
+  border-color: #7a5a24;
+}
+.browser-warning span { flex: 1; }
+.browser-warning a { white-space: nowrap; text-decoration: none; }
 
 .btn.line { background: #06c755; border-color: #06c755; color: #04220f; font-weight: 700; text-decoration: none; }
 .btn.line:hover { border-color: #06c755; filter: brightness(1.08); }
