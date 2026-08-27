@@ -103,6 +103,9 @@ export default {
   prepare,
   isReady,
   rubyStyles: ['pinyin', 'kana'],
+  // 漢字は1文字ずつルビを振る
+  split: (text) => [...text],
+  joinWith: '',
   read(text, { style = 'pinyin' } = {}) {
     if (!pinyinFn) return { kana: '', roman: '', unavailable: true };
     const roman = pinyinFn(text, { toneType: 'symbol', type: 'string' });

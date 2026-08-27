@@ -142,9 +142,23 @@ el.cameraBtn.addEventListener('click', () => {
 el.speak.addEventListener('click', speakAll);
 el.copy.addEventListener('click', copyReadings);
 
+/**
+ * その文字体系の字体を持たない端末のために、必要なときだけ取りに行く
+ * （ミャンマー文字などは、無いと豆腐になって読めない）
+ */
+function ensureWebfont(lang) {
+  if (!lang.webfont || document.querySelector(`link[href="${lang.webfont}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = lang.webfont;
+  document.head.append(link);
+}
+
 /** 選んだ言語に関係のない設定は出さない */
 function syncStyleOptions() {
   const lang = getLanguage(el.lang.value);
+  document.documentElement.dataset.lang = lang.code;
+  ensureWebfont(lang);
   const supportsRoman = ['ko', 'ru', 'el', 'zh', 'my'].includes(lang.code);
   el.style.disabled = !supportsRoman;
   if (!supportsRoman) el.style.value = 'kana';
@@ -280,7 +294,7 @@ async function run() {
     const result = await recognize(target, lang.ocr, (m) => {
       if (m.status === 'recognizing text') setProgress(0.3 + m.progress * 0.7);
       else if (typeof m.progress === 'number') setProgress(m.progress * 0.3);
-    });
+    }, lang.ocrQuality);
     setProgress(1);
 
     if (!result.text.trim()) {
@@ -306,7 +320,7 @@ async function run() {
 }
 
 /** 語からルビを1つ作る */
-function readingOf(lang, word) {
+function readingOf(lang, word, after = '') {
   const raw = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
   if (!raw) return null;
 
@@ -314,7 +328,8 @@ function readingOf(lang, word) {
   const fix = lang.correct?.(raw);
   const core = fix?.changed ? fix.text : raw;
 
-  const r = lang.read(core, { style: el.style.value, dialect: el.dialect.value });
+  // after には直前の読み単位を渡す。音節をまたぐ発音の変化に要る
+  const r = lang.read(core, { style: el.style.value, dialect: el.dialect.value, after });
   const roman = el.style.value === 'roman' && r.roman;
   const text = roman ? r.roman : r.ruby ?? r.kana;
   if (!text) return null;
@@ -475,15 +490,20 @@ function boundsOf(a, b) {
 function renderText(lang) {
   el.textView.replaceChildren();
   if (!lastResult) return;
-  // 漢字は1文字ずつルビを振る。選ぶ単位は認識した語のまま
-  const perChar = lang.code === 'zh';
+  // 漢字は1文字ずつ、ミャンマー文字は1音節ずつルビを振る。
+  // 語まるごとだと、ルビが長くなって字との対応が取れない。
+  // 選ぶ単位は認識した語のまま
+  const gap = lang.joinWith ?? ' ';
 
   for (const line of lastResult.lines) {
     const p = document.createElement('p');
     line.items.forEach((item, i) => {
-      if (i > 0 && !perChar) p.append(' ');
-      for (const piece of perChar ? [...item.text] : [item.text]) {
-        p.append(...renderWord(lang, item, piece));
+      if (i > 0 && gap) p.append(gap);
+      // 直前の読み単位を渡す。ビルマ語は前の音節で次の濁りが決まる
+      let prev = '';
+      for (const piece of lang.split ? lang.split(item.text) : [item.text]) {
+        p.append(...renderWord(lang, item, piece, prev));
+        prev = piece;
       }
     });
     if (p.childNodes.length) el.textView.append(p);
@@ -492,9 +512,9 @@ function renderText(lang) {
 }
 
 /** 1語を、前後の記号と読みに分けて組み立てる */
-function renderWord(lang, item, piece) {
+function renderWord(lang, item, piece, prev = '') {
   const [, before, core, after] = piece.match(/^([^\p{L}\p{M}\p{N}]*)(.*?)([^\p{L}\p{M}\p{N}]*)$/u);
-  const r = core ? readingOf(lang, core) : null;
+  const r = core ? readingOf(lang, core, prev) : null;
   const nodes = [];
   if (before) nodes.push(document.createTextNode(before));
 
@@ -565,7 +585,7 @@ function speakAll() {
 async function copyReadings() {
   if (!lastResult) return;
   const lang = getLanguage(el.lang.value);
-  const join = lang.code === 'zh' ? '' : ' ';
+  const join = lang.joinWith ?? ' ';
   const out = lastResult.lines
     .map((line) => {
       const shown = line.items.filter((item) => rubyOn(item));

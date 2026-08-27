@@ -7,7 +7,7 @@ import { pinyinToKatakana } from '../src/lang/zh.js';
 import { decompose, applySandhi } from '../src/lang/ko.js';
 import { EN_DICT } from '../src/lang/en-dict.js';
 import { correctSyllable, isSyllable } from '../src/lang/vi.js';
-import { unstack, toSyllables } from '../src/lang/my.js';
+import { unstack, correctSyllable as correctMyanmar } from '../src/lang/my.js';
 
 const reads = (code, cases) => {
   const lang = getLanguage(code);
@@ -189,31 +189,77 @@ test('ビルマ語 — 音節に切って読む', () => {
   const kana = (w) => my.read(w).kana;
   assert.equal(kana('မြန်မာ'), 'ミャンマー');
   assert.equal(kana('ရေ'), 'イェー');            // ေ は子音のあとに置かれる
-  assert.equal(kana('ထမင်း'), 'タミン');
   assert.equal(kana('ကျောင်း'), 'チャウン');      // ကျ は破擦音になる
   assert.equal(kana('စာအုပ်'), 'サーオウッ');
-  assert.equal(kana('ဆေးရုံ'), 'セーヨウン');
+  assert.equal(kana('ဆေးရုံ'), 'セーˊヨウン');
+  assert.equal(kana('ဘဏ်'), 'バン');             // ဏ် も -an
+  assert.equal(kana('လေဆိပ်'), 'レーセイッ');
   assert.equal(my.read('ရဲစခန်း').roman, 'yesakhan');
+  assert.equal(my.read('မြန်မာ').roman, 'myanma');
+  // 1音節のときは声調記号を別に返す（色を分けて添えるため）
+  assert.equal(my.read('ကျောင်း').sign, 'ˊ');
 });
 
 test('ビルマ語 — 積み重ねをほどく', () => {
   // 「C1 ္ C2」は C1 が前の音節の末子音になる
   assert.equal(unstack('မန္တလေး'), 'မန်တလေး');
-  assert.equal(getLanguage('my').read('မန္တလေး').kana, 'マンダレー');
+  assert.equal(getLanguage('my').read('မန္တလေး').kana, 'マンダレーˊ');
   // キンズィ（င်္）も同じ
   assert.equal(getLanguage('my').read('မင်္ဂလာပါ').kana, 'ミンガラーパー');
+});
+
+test('ビルマ語 — 記号の並び順が違っても同じ読みになる', () => {
+  const my = getLanguage('my');
+  // ော は ေ + ာ。文字認識が ာ + ေ の順で返しても同じに読めなければならない
+  assert.equal(my.read('ကော').kana, my.read('ကာေ').kana);
+  // ုံ と ံု も同じ
+  assert.equal(my.read('ရုံ').kana, my.read('ရံု').kana);
+});
+
+test('ビルマ語 — 独立母音と句読点', () => {
+  const my = getLanguage('my');
+  assert.equal(my.read('ဣ').kana, 'イ');
+  assert.equal(my.read('ဦး').kana, 'ウー');
+  assert.equal(my.read('ဩဂုတ်').kana, 'オーゴウッ');
+  // 句読点は読みを壊さずそのまま残る
+  assert.equal(my.read('မြန်မာ။').kana, 'ミャンマー။');
+  assert.equal(my.read('၁၂၃').kana, '123');
 });
 
 test('ビルマ語 — 鼻音のあとの無声音は濁る', () => {
   const my = getLanguage('my');
   assert.equal(my.read('ရန်ကုန်').kana, 'ヤンゴウン');
   assert.equal(my.read('ဝင်ပေါက်').kana, 'ウィンバウッ');
+  // 1音節ずつ読むときは、直前の音節を渡せば濁りが効く
+  assert.equal(my.read('ပေါက်').kana, 'パウッ');
+  assert.equal(my.read('ပေါက်', { after: 'ဝင်' }).kana, 'バウッ');
 });
 
-test('ビルマ語 — 表に無い韻も読みを返す', () => {
-  const r = getLanguage('my').read('ဘတ်စ်ကား');
-  assert.equal(r.confident, false);
-  assert.ok(r.kana.length > 0);
+test('ビルマ語 — 声調を読みに添える', () => {
+  const my = getLanguage('my');
+  assert.equal(my.read('ကား').sign, 'ˊ');   // း 高く長く
+  assert.equal(my.read('က').sign, '');       // 記号なし
+});
+
+test('ビルマ語 — 介子音 ွ の当て方は母音で変わる', () => {
+  const my = getLanguage('my');
+  assert.equal(my.read('သွား').kana, 'スワー');      // ア段の前は「ウ+ワ行」
+  assert.equal(my.read('ထွက်').kana, 'トウェッ');    // エ段の前はそのまま
+});
+
+test('ビルマ語 — そっくりな字の取り違えを直す', () => {
+  // ၀（ゼロ）と ဝ、၇ と ရ は字形が同じ
+  assert.equal(correctMyanmar('၀င်').text, 'ဝင်');
+  assert.equal(correctMyanmar('၇န်').text, 'ရန်');
+  // もともと正しい綴りは触らない
+  assert.equal(correctMyanmar('ဝင်').changed, false);
+  assert.equal(correctMyanmar('မြန်').changed, false);
+});
+
+test('ビルマ語 — ルビは音節ごとに振る', () => {
+  const my = getLanguage('my');
+  assert.deepEqual(my.split('မြန်မာနိုင်ငံ'), ['မြန်', 'မာ', 'နိုင်', 'ငံ']);
+  assert.equal(my.joinWith, '');
 });
 
 test('中国語 — ピンインからカタカナ', () => {

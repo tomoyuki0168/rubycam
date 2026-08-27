@@ -11,7 +11,7 @@ const ORIGINS = [
   'https://cdn.jsdelivr.net/npm',
   'https://unpkg.com',
 ];
-const LANG_URL = 'https://tessdata.projectnaptha.com/4.0.0';
+const LANG_BASE = 'https://tessdata.projectnaptha.com/4.0.0';
 
 let scriptPromise = null;
 let activeOrigin = ORIGINS[0];
@@ -50,16 +50,37 @@ async function loadEngine() {
   return scriptPromise;
 }
 
-async function getWorker(lang, onProgress) {
-  if (workers.has(lang)) return workers.get(lang);
+/**
+ * 認識用の作業単位を作る
+ *
+ * 字形が密な言語（ミャンマー文字など）は、精度の高い辞書（_best）を使う。
+ * 取得できない場合に備えて、通常の辞書へ落とせるようにしてある。
+ */
+async function getWorker(lang, quality, onProgress) {
+  const key = `${lang}:${quality}`;
+  if (workers.has(key)) return workers.get(key);
   await loadEngine();
-  const promise = window.Tesseract.createWorker(lang, 1, {
-    workerPath: `${activeOrigin}/tesseract.js@${VERSION}/dist/worker.min.js`,
-    corePath: `${activeOrigin}/tesseract.js-core@${CORE_VERSION}`,
-    langPath: LANG_URL,
-    logger: (m) => onProgress?.(m),
-  });
-  workers.set(lang, promise);
+
+  const paths = quality === 'best' ? [`${LANG_BASE}_best`, LANG_BASE] : [LANG_BASE];
+  const promise = (async () => {
+    let lastError;
+    for (const langPath of paths) {
+      try {
+        return await window.Tesseract.createWorker(lang, 1, {
+          workerPath: `${activeOrigin}/tesseract.js@${VERSION}/dist/worker.min.js`,
+          corePath: `${activeOrigin}/tesseract.js-core@${CORE_VERSION}`,
+          langPath,
+          logger: (m) => onProgress?.(m),
+        });
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    workers.delete(key);
+    throw lastError ?? new Error('文字認識の辞書を読み込めませんでした。');
+  })();
+
+  workers.set(key, promise);
   return promise;
 }
 
@@ -142,8 +163,8 @@ function buildWords(data) {
   return { words, lines: lines.filter((l) => l.items?.length) };
 }
 
-export async function recognize(canvas, lang, onProgress) {
-  const worker = await getWorker(lang, onProgress);
+export async function recognize(canvas, lang, onProgress, quality = 'standard') {
+  const worker = await getWorker(lang, quality, onProgress);
   const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
   const { words, lines } = buildWords(data);
   return { text: data.text ?? '', words, lines, confidence: data.confidence ?? 0 };

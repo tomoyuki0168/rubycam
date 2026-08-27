@@ -163,6 +163,13 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 .panel-actions { display: flex; gap: 0.4rem; }
 
 .text-view { margin-top: 0.9rem; font-size: 1.15rem; }
+/* ミャンマー文字は積み上がる形が多く、行間を詰めると読めない */
+[data-lang="my"] .text-view {
+  font-family: "Noto Sans Myanmar", "Myanmar Text", "Padauk", sans-serif;
+  font-size: 1.3rem;
+  line-height: 2.4;
+}
+[data-lang="my"] .text-view rt { font-size: 0.42em; }
 .text-view p { margin: 0 0 0.9rem; }
 .text-view ruby { cursor: pointer; }
 .text-view rt { font-size: 0.5em; color: var(--ruby); font-weight: 600; }

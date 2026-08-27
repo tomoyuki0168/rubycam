@@ -6,7 +6,7 @@
  * 通信できないときだけキャッシュに落とすことで、更新の確実さと
  * オフラインでの動作を両立させる。
  */
-const CACHE = 'rubycam-v6';
+const CACHE = 'rubycam-v7';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './assets/styles.css', './assets/icon.svg',
