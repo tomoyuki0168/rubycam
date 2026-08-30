@@ -163,8 +163,21 @@ function buildWords(data) {
   return { words, lines: lines.filter((l) => l.items?.length) };
 }
 
-export async function recognize(canvas, lang, onProgress, quality = 'standard') {
+/**
+ * @param {{quality?: string, psm?: string}} options
+ *   psm は文字の並び方の指定。3=段落として読む、6=ひとかたまりとして読む。
+ *   手書きは行が揃わないので、まとまりとして読ませたほうが崩れにくい。
+ */
+export async function recognize(canvas, lang, onProgress, options = {}) {
+  const { quality = 'standard', psm } = options;
   const worker = await getWorker(lang, quality, onProgress);
+  if (psm) {
+    try {
+      await worker.setParameters({ tessedit_pageseg_mode: psm });
+    } catch {
+      /* 指定できない版もあるので、その場合は既定のまま読む */
+    }
+  }
   const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
   const { words, lines } = buildWords(data);
   return { text: data.text ?? '', words, lines, confidence: data.confidence ?? 0 };

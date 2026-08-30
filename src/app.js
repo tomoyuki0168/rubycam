@@ -1,13 +1,14 @@
 /** 画面まわり — 撮影、文字認識、ルビの生成と表示 */
 import { LANGUAGES, getLanguage, detectLanguage } from './lang/index.js';
 import { recognize } from './ocr.js';
-import { enhance } from './enhance.js';
+import { enhance, deskewCanvas, PROFILES } from './enhance.js';
 import { makeQrSvg } from './qr.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
   stage: $('stage'), preview: $('preview'), shot: $('shot'), overlay: $('overlay'),
-  retake: $('btn-retake'), stop: $('btn-stop'),
+  retake: $('btn-retake'), stop: $('btn-stop'), crop: $('btn-crop'),
+  ink: $('ink'),
   fileCamera: $('file-camera'), fileAlbum: $('file-album'),
   cameraBtn: $('btn-camera-file'), albumBtn: $('btn-album'),
   browserWarning: $('browser-warning'),
@@ -59,6 +60,9 @@ let canvas = null;
 let lastResult = null;
 let busy = false;
 
+// なぞって範囲を切り取る操作の最中かどうか
+let cropping = false;
+
 // ルビをふる語の指定。空のときは「選んだ語だけ」でも何も出ない
 const picked = new Set();
 const picking = () => el.scope.value === 'picked';
@@ -99,6 +103,29 @@ el.pickNone.addEventListener('click', () => {
   picked.clear();
   render();
 });
+el.ink.addEventListener('change', () => {
+  noteInkMode();
+  if (canvas) run();
+});
+el.crop.addEventListener('click', () => {
+  cropping = true;
+  el.overlay.classList.add('picking');
+  setStatus('読みたい部分をなぞって囲んでください。囲んだ範囲だけを読み直します。');
+});
+
+/** 手書きは何がどこまで読めるのかを、選んだ時点で伝える */
+function noteInkMode() {
+  if (el.ink.value !== 'hand') {
+    el.hint.hidden = true;
+    return;
+  }
+  el.hint.replaceChildren(
+    '手書きは、ブロック体の英数字なら読めることがあります。'
+    + '続け書きや漢字・かなの手書きは、いまの仕組みでは読めません。'
+    + '「読む範囲を選ぶ」で読みたい所だけに絞ると当たりやすくなります。',
+  );
+  el.hint.hidden = false;
+}
 el.toggleOverlay.addEventListener('change', () => lastResult && render());
 el.dialect.addEventListener('change', () => {
   store.set(DIALECT_KEY, el.dialect.value);
@@ -260,6 +287,7 @@ function setImage(source, width, height) {
   el.shot.src = canvas.toDataURL('image/jpeg', 0.92);
   el.stage.classList.add('shot');
   el.retake.hidden = false;
+  el.crop.hidden = false;
 }
 
 function reset() {
@@ -271,6 +299,8 @@ function reset() {
   el.textPanel.hidden = true;
   el.toneLegend.hidden = true;
   el.retake.hidden = true;
+  el.crop.hidden = true;
+  cropping = false;
   el.hint.hidden = true;
   setStatus(defaultStatus());
 }
@@ -290,11 +320,20 @@ async function run() {
       setStatus('中国語の読み仮名辞書を取得できませんでした。通信できる環境で開き直してください。');
     }
 
-    const target = el.toggleEnhance.checked ? enhance(canvas) : canvas;
+    const mode = el.ink.value;
+    // 傾きは写真そのものを直す。こうすると、写真に重ねるルビの位置もそのまま合う
+    if (el.toggleEnhance.checked) {
+      const straight = deskewCanvas(canvas);
+      if (straight !== canvas) {
+        canvas = straight;
+        el.shot.src = canvas.toDataURL('image/jpeg', 0.92);
+      }
+    }
+    const target = el.toggleEnhance.checked ? enhance(canvas, { mode }) : canvas;
     const result = await recognize(target, lang.ocr, (m) => {
       if (m.status === 'recognizing text') setProgress(0.3 + m.progress * 0.7);
       else if (typeof m.progress === 'number') setProgress(m.progress * 0.3);
-    }, lang.ocrQuality);
+    }, { quality: lang.ocrQuality, psm: PROFILES[mode]?.psm });
     setProgress(1);
 
     if (!result.text.trim()) {
@@ -439,7 +478,7 @@ function setUpRegionPick() {
   let rect = null;
 
   el.overlay.addEventListener('pointerdown', (ev) => {
-    if (!picking() || !lastResult) return;
+    if (!cropping && (!picking() || !lastResult)) return;
     start = { x: ev.offsetX, y: ev.offsetY };
     rect = document.createElement('div');
     rect.className = 'sel-rect';
@@ -466,6 +505,11 @@ function setUpRegionPick() {
     if (box.width < 8 && box.height < 8) return;
 
     const view = el.overlay.getBoundingClientRect();
+    if (cropping) {
+      cropTo(box, view);
+      return;
+    }
+
     for (const w of lastResult.words) {
       if (!w.bbox) continue;
       const cx = ((w.bbox.x0 + w.bbox.x1) / 2 / canvas.width) * view.width;
@@ -476,6 +520,29 @@ function setUpRegionPick() {
     }
     render();
   });
+}
+
+/** 囲んだ範囲だけを切り出して読み直す */
+function cropTo(box, view) {
+  cropping = false;
+  el.overlay.classList.remove('picking');
+  const scale = canvas.width / view.width;
+  const w = Math.round(box.width * scale);
+  const h = Math.round(box.height * scale);
+  if (w < 24 || h < 16) {
+    setStatus('範囲が小さすぎます。もう少し広く囲んでください。');
+    return;
+  }
+
+  const cut = document.createElement('canvas');
+  cut.width = w;
+  cut.height = h;
+  cut.getContext('2d').drawImage(
+    canvas, Math.round(box.left * scale), Math.round(box.top * scale), w, h, 0, 0, w, h,
+  );
+  canvas = cut;
+  el.shot.src = canvas.toDataURL('image/jpeg', 0.92);
+  run();
 }
 
 function boundsOf(a, b) {

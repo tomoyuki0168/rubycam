@@ -48,6 +48,7 @@
       <button type="button" id="btn-camera-file" class="btn primary">カメラで撮る</button>
       <button type="button" id="btn-album" class="btn ghost">アルバムから選ぶ</button>
       <button type="button" id="btn-stop" class="btn ghost" hidden>やめる</button>
+      <button type="button" id="btn-crop" class="btn ghost" hidden>読む範囲を選ぶ</button>
       <button type="button" id="btn-retake" class="btn ghost" hidden>撮り直す</button>
       <input type="file" id="file-camera" class="file-input" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
       <input type="file" id="file-album" class="file-input" accept="image/*" tabindex="-1" aria-hidden="true">
@@ -65,6 +66,12 @@
       </label>
       <label id="dialect-field" hidden>発音
         <select id="dialect"></select>
+      </label>
+      <label>文字の種類
+        <select id="ink">
+          <option value="print">印刷された文字</option>
+          <option value="hand">手書き（ブロック体）</option>
+        </select>
       </label>
       <label>ルビの範囲
         <select id="scope">
@@ -129,6 +136,8 @@
     <ol>
       <li>読みたい紙の言語を選ぶ（ラテン文字なら撮影後に自動で見分けて教えます）</li>
       <li>「カメラで撮る」で紙を撮る（保存済みの写真を選んでも構いません）</li>
+      <li>手書きなら「文字の種類」を<b>手書き</b>に、うまく読めないときは
+        「読む範囲を選ぶ」で読みたい所だけに絞る</li>
       <li>写真の上か、下の文章表示でふりがなを読む</li>
       <li>一部だけ読みたいときは「ルビの範囲」を<b>選んだ語だけ</b>にして、
         知りたい語を押す（写真の上はなぞって囲むこともできます）</li>
