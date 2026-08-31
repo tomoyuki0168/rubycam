@@ -199,6 +199,9 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 .text-view rt { font-size: 0.5em; color: var(--ruby); font-weight: 600; }
 .text-view ruby.weak rt { color: var(--ruby-weak); }
 .text-view ruby.fixed { border-bottom: 1px dotted var(--accent); }
+/* 文字認識が自信を持てなかった語 */
+.text-view ruby.unsure, .text-view .word.unsure { opacity: 0.55; }
+.overlay .w.unsure { border-bottom-color: rgba(255, 145, 110, 0.7); }
 .overlay .w.fixed { border-bottom-style: dotted; }
 /* 声調記号は読みと混ざらないよう色を変える */
 .tone { font-style: normal; color: var(--accent); padding-left: 0.1em; }
@@ -304,6 +307,8 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       </label>
       <label class="check"><input type="checkbox" id="toggle-overlay" checked> 写真にルビを重ねる</label>
       <label class="check"><input type="checkbox" id="toggle-enhance" checked> 文字を読みやすく補正する</label>
+      <label class="check hand-only" id="deep-field" hidden><input type="checkbox" id="toggle-deep" checked> じっくり読む（時間がかかります）</label>
+      <label class="check hand-only" id="alnum-field" hidden><input type="checkbox" id="toggle-alnum"> 英数字だけを読む</label>
     </div>
 
     <div class="controls pick-tools" id="pick-tools" hidden>
@@ -3212,6 +3217,10 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     visit(data.blocks ?? []);
     return lines;
   }
+  function scoreResult(result) {
+    if (!result?.words?.length) return 0;
+    return result.words.reduce((total, w) => total + Math.max(0, (w.confidence ?? 0) - 30), 0);
+  }
   function buildWords(data) {
     const lines = collectLines(data).map((line) => ({ ...line }));
     const words = [];
@@ -3233,13 +3242,14 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     return { words, lines: lines.filter((l) => l.items?.length) };
   }
   async function recognize(canvas2, lang, onProgress, options = {}) {
-    const { quality = "standard", psm } = options;
+    const { quality = "standard", psm, whitelist } = options;
     const worker = await getWorker(lang, quality, onProgress);
-    if (psm) {
-      try {
-        await worker.setParameters({ tessedit_pageseg_mode: psm });
-      } catch {
-      }
+    const params = {};
+    if (psm) params.tessedit_pageseg_mode = psm;
+    params.tessedit_char_whitelist = whitelist ?? "";
+    try {
+      await worker.setParameters(params);
+    } catch {
     }
     const { data } = await worker.recognize(canvas2, {}, { text: true, blocks: true });
     const { words, lines } = buildWords(data);
@@ -3264,6 +3274,38 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       }
     }
     return sum;
+  }
+  function integralSquares(gray, w, h) {
+    const sum = new Float64Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y += 1) {
+      let row = 0;
+      for (let x = 0; x < w; x += 1) {
+        const v = gray[y * w + x];
+        row += v * v;
+        sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + row;
+      }
+    }
+    return sum;
+  }
+  var areaSum = (sum, w, x0, y0, x1, y1) => sum[(y1 + 1) * (w + 1) + x1 + 1] - sum[y0 * (w + 1) + x1 + 1] - sum[(y1 + 1) * (w + 1) + x0] + sum[y0 * (w + 1) + x0];
+  function sauvolaThreshold(gray, w, h, { radius, k = 0.2, R = 128 }) {
+    const sum = integralImage(gray, w, h);
+    const sq = integralSquares(gray, w, h);
+    const ink = new Uint8Array(w * h);
+    for (let y = 0; y < h; y += 1) {
+      const y0 = Math.max(0, y - radius);
+      const y1 = Math.min(h - 1, y + radius);
+      for (let x = 0; x < w; x += 1) {
+        const x0 = Math.max(0, x - radius);
+        const x1 = Math.min(w - 1, x + radius);
+        const n = (x1 - x0 + 1) * (y1 - y0 + 1);
+        const mean = areaSum(sum, w, x0, y0, x1, y1) / n;
+        const variance = Math.max(0, areaSum(sq, w, x0, y0, x1, y1) / n - mean * mean);
+        const threshold = mean * (1 + k * (Math.sqrt(variance) / R - 1));
+        ink[y * w + x] = gray[y * w + x] < threshold ? 1 : 0;
+      }
+    }
+    return ink;
   }
   function adaptiveThreshold(gray, w, h, { radius, bias }) {
     const sum = integralImage(gray, w, h);
@@ -3367,6 +3409,62 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     }
     return best;
   }
+  function despeckle(ink, w, h, { minArea = 6 } = {}) {
+    const seen = new Uint8Array(ink.length);
+    const stack = [];
+    let removed = 0;
+    for (let start = 0; start < ink.length; start += 1) {
+      if (!ink[start] || seen[start]) continue;
+      const blob = [];
+      stack.push(start);
+      seen[start] = 1;
+      while (stack.length) {
+        const i = stack.pop();
+        blob.push(i);
+        const x = i % w;
+        const y = (i - x) / w;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const j = ny * w + nx;
+          if (ink[j] && !seen[j]) {
+            seen[j] = 1;
+            stack.push(j);
+          }
+        }
+      }
+      if (blob.length < minArea) {
+        for (const i of blob) ink[i] = 0;
+        removed += blob.length;
+      }
+    }
+    return removed;
+  }
+  function estimateTextHeight(ink, w, h, { fraction = 0.15 } = {}) {
+    const profile = new Int32Array(h);
+    for (let y = 0; y < h; y += 1) {
+      let n = 0;
+      for (let x = 0; x < w; x += 1) if (ink[y * w + x]) n += 1;
+      profile[y] = n;
+    }
+    const peak = Math.max(...profile);
+    if (peak === 0) return 0;
+    const limit = peak * fraction;
+    const runs = [];
+    let run2 = 0;
+    for (let y = 0; y <= h; y += 1) {
+      if (y < h && profile[y] > limit) {
+        run2 += 1;
+        continue;
+      }
+      if (run2 > 1) runs.push(run2);
+      run2 = 0;
+    }
+    if (!runs.length) return 0;
+    runs.sort((a, b) => a - b);
+    return runs[Math.floor(runs.length / 2)];
+  }
   function dilate(ink, w, h) {
     const out = new Uint8Array(ink.length);
     for (let y = 0; y < h; y += 1) {
@@ -3393,39 +3491,65 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
 
   // src/enhance.js
   var PROFILES = {
-    print: { bias: 0.12, radiusDiv: 40, thicken: false, psm: "3" },
-    // 手書きは線が細く薄く、途切れやすい。しきい値を緩め、窓を小さく取り、
-    // 途切れをつないでから認識にかける
-    hand: { bias: 0.05, radiusDiv: 22, thicken: true, psm: "6" }
+    print: { method: "mean", bias: 0.12, radiusDiv: 40, thicken: false, psm: "3" },
+    // 手書きは線が細く薄く、途切れやすい。ばらつきも見る Sauvola で拾い、
+    // 窓を小さく取り、途切れをつないでから認識にかける
+    hand: { method: "sauvola", k: 0.16, radiusDiv: 22, thicken: true, psm: "6" }
+  };
+  var ATTEMPTS = {
+    print: [{ mode: "print", psm: "3" }],
+    hand: [
+      { mode: "hand", psm: "6" },
+      // ひとかたまりとして読む
+      { mode: "hand", psm: "11" },
+      // まばらに散った文字として読む
+      { mode: "print", psm: "6" }
+      // 濃くはっきり書かれた手書き向け
+    ]
   };
   var grayOf = (canvas2) => {
     const ctx = canvas2.getContext("2d", { willReadFrequently: true });
     return toGray(ctx.getImageData(0, 0, canvas2.width, canvas2.height).data, canvas2.width, canvas2.height);
   };
-  function deskewCanvas(source) {
-    const gray = grayOf(source);
-    const small = downscaleGray(gray, source.width, source.height, 600);
+  function survey(canvas2) {
+    const gray = grayOf(canvas2);
+    const small = downscaleGray(gray, canvas2.width, canvas2.height, 600);
     const ink = adaptiveThreshold(small.gray, small.w, small.h, {
       radius: Math.max(5, Math.round(Math.min(small.w, small.h) / 40)),
       bias: 0.1
     });
-    const angle = estimateSkew(ink, small.w, small.h);
-    if (Math.abs(angle) < 0.5) return source;
-    const rad = angle * Math.PI / 180;
+    return { ...small, ink, ratio: canvas2.width / small.w };
+  }
+  function transform(source, degrees, scale) {
+    const rad = degrees * Math.PI / 180;
     const cos = Math.abs(Math.cos(rad));
     const sin = Math.abs(Math.sin(rad));
-    const w = Math.ceil(source.width * cos + source.height * sin);
-    const h = Math.ceil(source.width * sin + source.height * cos);
+    const w = Math.ceil((source.width * cos + source.height * sin) * scale);
+    const h = Math.ceil((source.width * sin + source.height * cos) * scale);
     const out = document.createElement("canvas");
     out.width = w;
     out.height = h;
     const ctx = out.getContext("2d");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingQuality = "high";
     ctx.translate(w / 2, h / 2);
     ctx.rotate(rad);
+    ctx.scale(scale, scale);
     ctx.drawImage(source, -source.width / 2, -source.height / 2);
     return out;
+  }
+  function prepareCanvas(source, { minTextHeight = 30, maxEdge = 3600 } = {}) {
+    const first = survey(source);
+    const angle = estimateSkew(first.ink, first.w, first.h);
+    const straight = Math.abs(angle) < 0.5 ? source : transform(source, angle, 1);
+    const second = Math.abs(angle) < 0.5 ? first : survey(straight);
+    removeRuledLines(second.ink, second.w, second.h);
+    const textHeight = estimateTextHeight(second.ink, second.w, second.h) * second.ratio;
+    let scale = textHeight > 0 && textHeight < minTextHeight ? minTextHeight / textHeight : 1;
+    scale = Math.min(scale, 3, maxEdge / Math.max(straight.width, straight.height));
+    scale = Math.max(1, scale);
+    return scale < 1.05 ? straight : transform(straight, 0, scale);
   }
   function enhance(source, { mode = "print" } = {}) {
     const profile = PROFILES[mode] ?? PROFILES.print;
@@ -3433,8 +3557,9 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     const h = source.height;
     const gray = grayOf(source);
     const radius = Math.max(7, Math.round(Math.min(w, h) / profile.radiusDiv));
-    let ink = adaptiveThreshold(gray, w, h, { radius, bias: profile.bias });
+    let ink = profile.method === "sauvola" ? sauvolaThreshold(gray, w, h, { radius, k: profile.k }) : adaptiveThreshold(gray, w, h, { radius, bias: profile.bias });
     removeRuledLines(ink, w, h);
+    despeckle(ink, w, h, { minArea: Math.max(4, Math.round(Math.min(w, h) / 260)) });
     if (profile.thicken) ink = dilate(ink, w, h);
     const inverted = isInverted(ink);
     const out = document.createElement("canvas");
@@ -5135,6 +5260,10 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     stop: $("btn-stop"),
     crop: $("btn-crop"),
     ink: $("ink"),
+    deep: $("toggle-deep"),
+    alnum: $("toggle-alnum"),
+    deepField: $("deep-field"),
+    alnumField: $("alnum-field"),
     fileCamera: $("file-camera"),
     fileAlbum: $("file-album"),
     cameraBtn: $("btn-camera-file"),
@@ -5232,13 +5361,18 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     noteInkMode();
     if (canvas) run();
   });
+  el.deep.addEventListener("change", () => canvas && run());
+  el.alnum.addEventListener("change", () => canvas && run());
   el.crop.addEventListener("click", () => {
     cropping = true;
     el.overlay.classList.add("picking");
     setStatus("読みたい部分をなぞって囲んでください。囲んだ範囲だけを読み直します。");
   });
   function noteInkMode() {
-    if (el.ink.value !== "hand") {
+    const hand = el.ink.value === "hand";
+    el.deepField.hidden = !hand;
+    el.alnumField.hidden = !hand;
+    if (!hand) {
       el.hint.hidden = true;
       return;
     }
@@ -5402,17 +5536,13 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       }
       const mode = el.ink.value;
       if (el.toggleEnhance.checked) {
-        const straight = deskewCanvas(canvas);
-        if (straight !== canvas) {
-          canvas = straight;
+        const prepared = prepareCanvas(canvas);
+        if (prepared !== canvas) {
+          canvas = prepared;
           el.shot.src = canvas.toDataURL("image/jpeg", 0.92);
         }
       }
-      const target = el.toggleEnhance.checked ? enhance(canvas, { mode }) : canvas;
-      const result = await recognize(target, lang.ocr, (m) => {
-        if (m.status === "recognizing text") setProgress(0.3 + m.progress * 0.7);
-        else if (typeof m.progress === "number") setProgress(m.progress * 0.3);
-      }, { quality: lang.ocrQuality, psm: PROFILES[mode]?.psm });
+      const result = await readBest(lang, mode);
       setProgress(1);
       if (!result.text.trim()) {
         setStatus("文字を見つけられませんでした。明るい場所で、紙を正面から撮り直してみてください。");
@@ -5425,14 +5555,37 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       render2();
       suggestLanguage(result.text);
       const fixed = countFixed(lang);
-      const note = fixed ? `、うち${fixed}語は綴りを補正しました` : "";
-      setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）${note}。`);
+      const shaky = result.words.filter(unsure).length;
+      const notes = [
+        fixed ? `うち${fixed}語は綴りを補正しました` : "",
+        shaky ? `${shaky}語は読み違えの可能性があります（うすく表示）` : ""
+      ].filter(Boolean);
+      setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）` + (notes.length ? `。${notes.join("、")}` : "") + "。");
     } catch (e) {
       setStatus(e.message ?? "読み取りに失敗しました。");
     } finally {
       busy = false;
       setTimeout(() => setProgress(null), 600);
     }
+  }
+  async function readBest(lang, mode) {
+    const all = ATTEMPTS[mode] ?? ATTEMPTS.print;
+    const attempts = mode === "hand" && el.deep.checked ? all : [all[0]];
+    const whitelist = el.alnum.checked ? "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,-/: " : void 0;
+    let best = null;
+    for (const [i, attempt] of attempts.entries()) {
+      if (attempts.length > 1) {
+        setStatus(`${lang.label}として読み取っています… (${i + 1}/${attempts.length})`);
+      }
+      const target = el.toggleEnhance.checked ? enhance(canvas, { mode: attempt.mode }) : canvas;
+      const slice = 1 / attempts.length;
+      const result = await recognize(target, lang.ocr, (m) => {
+        const inner = m.status === "recognizing text" ? 0.3 + m.progress * 0.7 : typeof m.progress === "number" ? m.progress * 0.3 : 0;
+        setProgress((i + inner) * slice);
+      }, { quality: lang.ocrQuality, psm: attempt.psm, whitelist });
+      if (!best || scoreResult(result) > scoreResult(best)) best = result;
+    }
+    return best;
   }
   function readingOf(lang, word, after = "") {
     const raw = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
@@ -5507,7 +5660,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
       const { x0, y0, x1, y1 } = w.bbox;
       const box = document.createElement("div");
       const nearTop = y0 / H < 0.09;
-      box.className = `w${r.weak ? " weak" : ""}${nearTop ? " below" : ""}${r.fixedFrom ? " fixed" : ""}` + (picking() ? on ? " on" : " off" : "");
+      box.className = `w${r.weak ? " weak" : ""}${nearTop ? " below" : ""}${r.fixedFrom ? " fixed" : ""}` + (w.confidence < 60 ? " unsure" : "") + (picking() ? on ? " on" : " off" : "");
       box.style.left = `${x0 / W * 100}%`;
       box.style.top = `${y0 / H * 100}%`;
       box.style.width = `${(x1 - x0) / W * 100}%`;
@@ -5623,6 +5776,7 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     }
     el.textPanel.hidden = el.textView.childElementCount === 0;
   }
+  var unsure = (item) => (item.confidence ?? 100) < 60;
   function renderWord(lang, item, piece, prev = "") {
     const [, before, core, after] = piece.match(/^([^\p{L}\p{M}\p{N}]*)(.*?)([^\p{L}\p{M}\p{N}]*)$/u);
     const r = core ? readingOf(lang, core, prev) : null;
@@ -5630,14 +5784,15 @@ main { max-width: 860px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem
     if (before) nodes.push(document.createTextNode(before));
     if (!r || !rubyOn(item)) {
       const span = document.createElement("span");
-      span.className = picking() ? "word pickable" : "word";
+      span.className = `word${picking() ? " pickable" : ""}${unsure(item) ? " unsure" : ""}`;
       span.textContent = core;
       if (picking()) span.addEventListener("click", () => togglePick(item));
       nodes.push(span);
     } else {
       const ruby = document.createElement("ruby");
-      ruby.className = `${r.weak ? "weak " : ""}${r.fixedFrom ? "fixed" : ""}`.trim();
+      ruby.className = `${r.weak ? "weak " : ""}${r.fixedFrom ? "fixed " : ""}${unsure(item) ? "unsure" : ""}`.trim();
       if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
+      else if (unsure(item)) ruby.title = `文字認識の確からしさ ${Math.round(item.confidence)}%。読み違えているかもしれません`;
       ruby.append(core);
       const rt = document.createElement("rt");
       rt.append(...rubyNodes(r));

@@ -31,6 +31,57 @@ export function integralImage(gray, w, h) {
   return sum;
 }
 
+/** 二乗和の積分画像。ばらつきを一定の計算量で出すために使う */
+export function integralSquares(gray, w, h) {
+  const sum = new Float64Array((w + 1) * (h + 1));
+  for (let y = 0; y < h; y += 1) {
+    let row = 0;
+    for (let x = 0; x < w; x += 1) {
+      const v = gray[y * w + x];
+      row += v * v;
+      sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + row;
+    }
+  }
+  return sum;
+}
+
+const areaSum = (sum, w, x0, y0, x1, y1) =>
+  sum[(y1 + 1) * (w + 1) + x1 + 1]
+  - sum[y0 * (w + 1) + x1 + 1]
+  - sum[(y1 + 1) * (w + 1) + x0]
+  + sum[y0 * (w + 1) + x0];
+
+/**
+ * Sauvola のしきい値で二値化する
+ *
+ * 平均だけで決める方法（adaptiveThreshold）は、地が一様な所で
+ * わずかな汚れまで文字にしてしまう。Sauvola は「周りのばらつき」も見るので、
+ * 濃さがそろった地では厳しく、文字のある所では緩くなる。
+ * 線が細く濃さがまちまちな手書きで効く。
+ *
+ *   しきい値 = 平均 × (1 + k × (ばらつき / R − 1))
+ */
+export function sauvolaThreshold(gray, w, h, { radius, k = 0.2, R = 128 }) {
+  const sum = integralImage(gray, w, h);
+  const sq = integralSquares(gray, w, h);
+  const ink = new Uint8Array(w * h);
+
+  for (let y = 0; y < h; y += 1) {
+    const y0 = Math.max(0, y - radius);
+    const y1 = Math.min(h - 1, y + radius);
+    for (let x = 0; x < w; x += 1) {
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(w - 1, x + radius);
+      const n = (x1 - x0 + 1) * (y1 - y0 + 1);
+      const mean = areaSum(sum, w, x0, y0, x1, y1) / n;
+      const variance = Math.max(0, areaSum(sq, w, x0, y0, x1, y1) / n - mean * mean);
+      const threshold = mean * (1 + k * (Math.sqrt(variance) / R - 1));
+      ink[y * w + x] = gray[y * w + x] < threshold ? 1 : 0;
+    }
+  }
+  return ink;
+}
+
 /**
  * 局所しきい値で二値化する
  *
@@ -180,6 +231,81 @@ export function estimateSkew(ink, w, h, { maxDeg = 8, step = 0.5 } = {}) {
     }
   }
   return best;
+}
+
+/**
+ * 小さすぎる塊を消す
+ *
+ * 紙の汚れ、インクの飛び、圧縮の粒は、文字認識を惑わせる。
+ * つながっている画素をまとめ、面積が小さすぎるものだけを落とす。
+ */
+export function despeckle(ink, w, h, { minArea = 6 } = {}) {
+  const seen = new Uint8Array(ink.length);
+  const stack = [];
+  let removed = 0;
+
+  for (let start = 0; start < ink.length; start += 1) {
+    if (!ink[start] || seen[start]) continue;
+
+    const blob = [];
+    stack.push(start);
+    seen[start] = 1;
+    while (stack.length) {
+      const i = stack.pop();
+      blob.push(i);
+      const x = i % w;
+      const y = (i - x) / w;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (ink[j] && !seen[j]) {
+          seen[j] = 1;
+          stack.push(j);
+        }
+      }
+    }
+
+    if (blob.length < minArea) {
+      for (const i of blob) ink[i] = 0;
+      removed += blob.length;
+    }
+  }
+  return removed;
+}
+
+/**
+ * 文字の高さ（行の高さ）を見積もる
+ *
+ * 文字認識は、文字が小さすぎると急に当たらなくなる。
+ * 行ごとの文字画素の分布から「文字のある帯」の高さを測り、
+ * 拡大が要るかどうかの判断に使う。
+ */
+export function estimateTextHeight(ink, w, h, { fraction = 0.15 } = {}) {
+  const profile = new Int32Array(h);
+  for (let y = 0; y < h; y += 1) {
+    let n = 0;
+    for (let x = 0; x < w; x += 1) if (ink[y * w + x]) n += 1;
+    profile[y] = n;
+  }
+  const peak = Math.max(...profile);
+  if (peak === 0) return 0;
+
+  const limit = peak * fraction;
+  const runs = [];
+  let run = 0;
+  for (let y = 0; y <= h; y += 1) {
+    if (y < h && profile[y] > limit) {
+      run += 1;
+      continue;
+    }
+    if (run > 1) runs.push(run);
+    run = 0;
+  }
+  if (!runs.length) return 0;
+  runs.sort((a, b) => a - b);
+  return runs[Math.floor(runs.length / 2)]; // 中央値。飛び抜けた行に引きずられない
 }
 
 /** 細く途切れた線をつなぐ（手書きの薄い線向け） */

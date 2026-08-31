@@ -130,6 +130,18 @@ function collectLines(data) {
 }
 
 /**
+ * 読み取り結果の確からしさを1つの数にする
+ *
+ * 手書きは何度か試して良いものを採る。そのとき「1語だけ高得点」より
+ * 「多くの語がそこそこ」のほうが役に立つので、語ごとの確からしさを
+ * 足し合わせる。低すぎる語は数えない（数だけ稼がせないため）。
+ */
+export function scoreResult(result) {
+  if (!result?.words?.length) return 0;
+  return result.words.reduce((total, w) => total + Math.max(0, (w.confidence ?? 0) - 30), 0);
+}
+
+/**
  * 行と語を組み立てる
  *
  * 写真に重ねる表示と文章の表示で同じ語を指せるよう、
@@ -169,14 +181,16 @@ function buildWords(data) {
  *   手書きは行が揃わないので、まとまりとして読ませたほうが崩れにくい。
  */
 export async function recognize(canvas, lang, onProgress, options = {}) {
-  const { quality = 'standard', psm } = options;
+  const { quality = 'standard', psm, whitelist } = options;
   const worker = await getWorker(lang, quality, onProgress);
-  if (psm) {
-    try {
-      await worker.setParameters({ tessedit_pageseg_mode: psm });
-    } catch {
-      /* 指定できない版もあるので、その場合は既定のまま読む */
-    }
+  const params = {};
+  if (psm) params.tessedit_pageseg_mode = psm;
+  // 読む文字を絞ると、手書きの取り違えが目に見えて減る
+  params.tessedit_char_whitelist = whitelist ?? '';
+  try {
+    await worker.setParameters(params);
+  } catch {
+    /* 指定できない版もあるので、その場合は既定のまま読む */
   }
   const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
   const { words, lines } = buildWords(data);

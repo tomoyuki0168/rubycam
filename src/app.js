@@ -1,14 +1,15 @@
 /** 画面まわり — 撮影、文字認識、ルビの生成と表示 */
 import { LANGUAGES, getLanguage, detectLanguage } from './lang/index.js';
-import { recognize } from './ocr.js';
-import { enhance, deskewCanvas, PROFILES } from './enhance.js';
+import { recognize, scoreResult } from './ocr.js';
+import { enhance, prepareCanvas, ATTEMPTS } from './enhance.js';
 import { makeQrSvg } from './qr.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
   stage: $('stage'), preview: $('preview'), shot: $('shot'), overlay: $('overlay'),
   retake: $('btn-retake'), stop: $('btn-stop'), crop: $('btn-crop'),
-  ink: $('ink'),
+  ink: $('ink'), deep: $('toggle-deep'), alnum: $('toggle-alnum'),
+  deepField: $('deep-field'), alnumField: $('alnum-field'),
   fileCamera: $('file-camera'), fileAlbum: $('file-album'),
   cameraBtn: $('btn-camera-file'), albumBtn: $('btn-album'),
   browserWarning: $('browser-warning'),
@@ -107,6 +108,8 @@ el.ink.addEventListener('change', () => {
   noteInkMode();
   if (canvas) run();
 });
+el.deep.addEventListener('change', () => canvas && run());
+el.alnum.addEventListener('change', () => canvas && run());
 el.crop.addEventListener('click', () => {
   cropping = true;
   el.overlay.classList.add('picking');
@@ -115,7 +118,10 @@ el.crop.addEventListener('click', () => {
 
 /** 手書きは何がどこまで読めるのかを、選んだ時点で伝える */
 function noteInkMode() {
-  if (el.ink.value !== 'hand') {
+  const hand = el.ink.value === 'hand';
+  el.deepField.hidden = !hand;
+  el.alnumField.hidden = !hand;
+  if (!hand) {
     el.hint.hidden = true;
     return;
   }
@@ -321,19 +327,17 @@ async function run() {
     }
 
     const mode = el.ink.value;
-    // 傾きは写真そのものを直す。こうすると、写真に重ねるルビの位置もそのまま合う
+    // 傾きの補正と拡大は写真そのものに施す。
+    // こうすると、写真に重ねるルビの位置もそのまま合う
     if (el.toggleEnhance.checked) {
-      const straight = deskewCanvas(canvas);
-      if (straight !== canvas) {
-        canvas = straight;
+      const prepared = prepareCanvas(canvas);
+      if (prepared !== canvas) {
+        canvas = prepared;
         el.shot.src = canvas.toDataURL('image/jpeg', 0.92);
       }
     }
-    const target = el.toggleEnhance.checked ? enhance(canvas, { mode }) : canvas;
-    const result = await recognize(target, lang.ocr, (m) => {
-      if (m.status === 'recognizing text') setProgress(0.3 + m.progress * 0.7);
-      else if (typeof m.progress === 'number') setProgress(m.progress * 0.3);
-    }, { quality: lang.ocrQuality, psm: PROFILES[mode]?.psm });
+
+    const result = await readBest(lang, mode);
     setProgress(1);
 
     if (!result.text.trim()) {
@@ -348,14 +352,50 @@ async function run() {
     render();
     suggestLanguage(result.text);
     const fixed = countFixed(lang);
-    const note = fixed ? `、うち${fixed}語は綴りを補正しました` : '';
-    setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）${note}。`);
+    const shaky = result.words.filter(unsure).length;
+    const notes = [
+      fixed ? `うち${fixed}語は綴りを補正しました` : '',
+      shaky ? `${shaky}語は読み違えの可能性があります（うすく表示）` : '',
+    ].filter(Boolean);
+    setStatus(`${result.words.length}語を読み取りました（認識の確からしさ ${Math.round(result.confidence)}%）`
+      + (notes.length ? `。${notes.join('、')}` : '') + '。');
   } catch (e) {
     setStatus(e.message ?? '読み取りに失敗しました。');
   } finally {
     busy = false;
     setTimeout(() => setProgress(null), 600);
   }
+}
+
+/**
+ * 読み取って、いちばん確からしい結果を返す
+ *
+ * 手書きは一度で当たるとは限らない。「じっくり読む」のときは、
+ * 整え方と読ませ方を変えて何度か試し、点数の高いものを採る。
+ */
+async function readBest(lang, mode) {
+  const all = ATTEMPTS[mode] ?? ATTEMPTS.print;
+  const attempts = mode === 'hand' && el.deep.checked ? all : [all[0]];
+  const whitelist = el.alnum.checked
+    ? '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,-/: '
+    : undefined;
+
+  let best = null;
+  for (const [i, attempt] of attempts.entries()) {
+    if (attempts.length > 1) {
+      setStatus(`${lang.label}として読み取っています… (${i + 1}/${attempts.length})`);
+    }
+    const target = el.toggleEnhance.checked ? enhance(canvas, { mode: attempt.mode }) : canvas;
+    const slice = 1 / attempts.length;
+    const result = await recognize(target, lang.ocr, (m) => {
+      const inner = m.status === 'recognizing text' ? 0.3 + m.progress * 0.7
+        : typeof m.progress === 'number' ? m.progress * 0.3 : 0;
+      setProgress((i + inner) * slice);
+    }, { quality: lang.ocrQuality, psm: attempt.psm, whitelist });
+
+    if (!best || scoreResult(result) > scoreResult(best)) best = result;
+  }
+  return best;
 }
 
 /** 語からルビを1つ作る */
@@ -449,6 +489,7 @@ function renderOverlay(lang) {
     const box = document.createElement('div');
     const nearTop = y0 / H < 0.09;
     box.className = `w${r.weak ? ' weak' : ''}${nearTop ? ' below' : ''}${r.fixedFrom ? ' fixed' : ''}`
+      + (w.confidence < 60 ? ' unsure' : '')
       + (picking() ? (on ? ' on' : ' off') : '');
     box.style.left = `${(x0 / W) * 100}%`;
     box.style.top = `${(y0 / H) * 100}%`;
@@ -578,6 +619,9 @@ function renderText(lang) {
   el.textPanel.hidden = el.textView.childElementCount === 0;
 }
 
+/** 文字認識が自信を持てなかった語 */
+const unsure = (item) => (item.confidence ?? 100) < 60;
+
 /** 1語を、前後の記号と読みに分けて組み立てる */
 function renderWord(lang, item, piece, prev = '') {
   const [, before, core, after] = piece.match(/^([^\p{L}\p{M}\p{N}]*)(.*?)([^\p{L}\p{M}\p{N}]*)$/u);
@@ -587,14 +631,15 @@ function renderWord(lang, item, piece, prev = '') {
 
   if (!r || !rubyOn(item)) {
     const span = document.createElement('span');
-    span.className = picking() ? 'word pickable' : 'word';
+    span.className = `word${picking() ? ' pickable' : ''}${unsure(item) ? ' unsure' : ''}`;
     span.textContent = core;
     if (picking()) span.addEventListener('click', () => togglePick(item));
     nodes.push(span);
   } else {
     const ruby = document.createElement('ruby');
-    ruby.className = `${r.weak ? 'weak ' : ''}${r.fixedFrom ? 'fixed' : ''}`.trim();
+    ruby.className = `${r.weak ? 'weak ' : ''}${r.fixedFrom ? 'fixed ' : ''}${unsure(item) ? 'unsure' : ''}`.trim();
     if (r.fixedFrom) ruby.title = `文字認識の綴りを補正: ${r.fixedFrom} → ${r.source}`;
+    else if (unsure(item)) ruby.title = `文字認識の確からしさ ${Math.round(item.confidence)}%。読み違えているかもしれません`;
     ruby.append(core);
     const rt = document.createElement('rt');
     rt.append(...rubyNodes(r));
