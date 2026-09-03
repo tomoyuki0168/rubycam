@@ -41,11 +41,12 @@ jobs:
           set -eu
           rm -rf _site
           mkdir _site
-          cp -r ./. _site/
-          # 開発用のものと、コピーで紛れ込んだものは配信しない
-          rm -rf _site/.git _site/.github _site/node_modules _site/dist _site/tests \
-                 _site/build.mjs _site/package.mjs _site/package-lock.json _site/.gitignore \
-                 _site/_site
+          # git 管理下のファイルだけを取り出す。`cp -r ./.` は _site を
+          # 自分自身へコピーしようとして失敗するうえ、未追跡ファイルまで拾う
+          git archive HEAD | tar -x -C _site
+          # 開発用のものは配信しない
+          rm -rf _site/.github _site/dist _site/tests \
+                 _site/build.mjs _site/package.mjs _site/package-lock.json _site/.gitignore
           # 共有カードのプレビューは絶対URLでないと出ない
           sed -i "s#__SITE_URL__#${SITE_URL}#g" _site/index.html
           # Jekyll の処理を通さない
